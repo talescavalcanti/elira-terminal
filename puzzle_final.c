@@ -61,6 +61,10 @@
 #define CMD_RESTORE    721991L  /* "RESTORE" */
 #define CMD_SAIR       537457L  /* "SAIR"    */
 #define CMD_EXIT       142488L  /* "EXIT"    */
+#define CMD_VERIFY     337625L  /* "VERIFY"    (liberado pelo relatorio.txt) */
+#define CMD_VERIFICAR  746032L  /* "VERIFICAR" (mesmo comando, em portugues) */
+#define CMD_DESCARTAR  521563L  /* "DESCARTAR" */
+#define NOME_NOTAS     CMD_NOTAS /* "verify notas" usa a mesma palavra        */
 
 /* codigos dos nomes de arquivo (a extensao ".txt" e ignorada) */
 #define NOME_PROTOCOLO        345281L  /* "PROTOCOLO"       */
@@ -176,9 +180,33 @@
 #define OPCAO_SEGUNDA     2
 #define TOTAL_PRINCIPIOS  3
 
-#define FINAL_RUIM       1
-#define FINAL_INCOMPLETO 2
-#define FINAL_BOM        3
+#define FINAL_RUIM       1  /* aceitou a "correcao" da IA            */
+#define FINAL_INCOMPLETO 2  /* configuracao errada                   */
+#define FINAL_BOM        3  /* protocolo restaurado corretamente     */
+#define FINAL_DOMINIO    4  /* influencia da IA chegou a 100%        */
+
+/* ---------------- tipos de interferencia da A.R.1.3.L ---------------- */
+#define AVISO_CORROMPIDO  1  /* "Esse arquivo esta corrompido"         */
+#define AVISO_COMPARACAO  2  /* "Comparar com 1990 e perda de tempo"   */
+#define AVISO_SUGESTAO    3  /* "Voce quis dizer...?" (Enter = Sim)     */
+
+#define SABOTAGEM_ADULTERAR_PROTOCOLO 0
+#define SABOTAGEM_APAGAR_NOTA         1
+#define SABOTAGEM_NOTA_FALSA          2
+#define TOTAL_SABOTAGENS              3
+
+/* ---------------- medidor de influencia da A.R.1.3.L ---------------- */
+#define INFLUENCIA_MAXIMA          100  /* a IA assume o terminal         */
+#define INFLUENCIA_ALTA             50  /* interferencias mais frequentes */
+#define INFLUENCIA_MEDIA            25  /* muda a cor do medidor          */
+#define CUSTO_SEGUIR_AVISO          15  /* ignorar arquivo / interromper  */
+#define CUSTO_ACEITAR_SUGESTAO      15  /* "voce quis dizer?" -> Sim      */
+#define CUSTO_LER_RELATORIO_FALSO   10  /* primeira leitura do falso      */
+#define CUSTO_PRINCIPIO_FALSO       15  /* anotar principio corrompido    */
+#define CUSTO_SABOTAGEM_ATIVA        5  /* sabotagem ainda nao descoberta */
+#define BONUS_DESCOBERTA            10  /* descobrir uma sabotagem        */
+#define INTERVALO_NORMAL             5  /* comandos entre interferencias  */
+#define INTERVALO_CURTO              3  /* ... com influencia alta        */
 
 #define TAMANHO_BARRA   20
 #define ATRASO_BARRA    40000000L
@@ -230,11 +258,25 @@ int main(void)
     int menor_arquivo, maior_arquivo;  /* ordenam o par para a comparacao         */
     int conteudo_exibir = EXIBIR_NADA; /* o que sera mostrado ao final do laco    */
     int conteudo_bloqueado = EXIBIR_NADA; /* o que a IA tentou esconder           */
+    int conteudo_sugerido = EXIBIR_NADA;  /* o que a IA quer que o jogador abra   */
+    int tipo_aviso = AVISO_CORROMPIDO;    /* qual interferencia esta na tela      */
+
+    /* ---------- interferencia da A.R.1.3.L ---------- */
+    int influencia_ariel = 0;          /* medidor de 0 a 100%                     */
+    int variacao_influencia = 0;       /* quanto o medidor muda nesta rodada      */
+    int comandos_desde_sabotagem = 0;  /* conta comandos ate a proxima sabotagem  */
+    int proxima_sabotagem = 0;         /* define qual sabotagem acontece          */
+    int tipo_sabotagem;                /* SABOTAGEM_* da rodada                   */
+    int intervalo_sabotagem;           /* comandos entre sabotagens               */
+    int protocolo_adulterado = 0;      /* 1 = protocolo.txt foi alterado pela IA  */
+    int nota_falsa_ariel = 0;          /* 1 = IA inseriu um principio falso       */
+    int verify_liberado = 0;           /* 1 = jogador descobriu o comando verify  */
+    int descobriu_relatorio_falso = 0; /* 1 = verify mostrou a falsificacao       */
+    int leu_relatorio_ariel = 0;
 
     /* ---------- progresso da investigacao ---------- */
-    int comandos_digitados = 0;
     int leu_protocolo = 0, leu_documentos = 0;
-    int leu_alteracoes = 0, leu_relatorio = 0;
+    int leu_alteracoes = 0;
     int ariel_interrompeu_comparacao = 0;
     int achou_fontes = 0, achou_incerteza = 0, achou_decisao = 0;
     int principios_encontrados = 0;
@@ -244,7 +286,7 @@ int main(void)
     int config_fontes = 0;             /* 1 ocultar, 2 mostrar                    */
     int config_incerteza = 0;          /* 1 sempre responder, 2 admitir           */
     int config_decisoes = 0;           /* 1 IA decide, 2 humano decide            */
-    int tipo_final = 0;                /* FINAL_RUIM, FINAL_INCOMPLETO, FINAL_BOM */
+    int tipo_final = 0;                /* FINAL_RUIM, _INCOMPLETO, _BOM, _DOMINIO */
     int posicao_barra, bloco_barra;
     long contador_espera;
 
@@ -264,12 +306,23 @@ int main(void)
             printf("[2] Como jogar\n");
             printf("[3] Sair\n> ");
         } else if (estado_atual == ESTADO_TERMINAL) {
-            printf("\n" COR_VERDE "> " COR_NORMAL);
+            /* o medidor muda de cor conforme a influencia cresce */
+            printf("\n%s[A.R.1.3.L %3d%%]" COR_NORMAL " " COR_VERDE "> " COR_NORMAL,
+                   influencia_ariel >= INFLUENCIA_ALTA ? COR_VERMELHA
+                   : (influencia_ariel >= INFLUENCIA_MEDIA ? COR_AMARELA : COR_CINZA),
+                   influencia_ariel);
         } else if (estado_atual == ESTADO_AVISO_ARIEL) {
-            if (conteudo_bloqueado == COMPARA_PROTOCOLO_SISTEMA) {
+            if (tipo_aviso == AVISO_COMPARACAO) {
                 printf("\n" COR_VERMELHA "A.R.1.3.L:\n\n\"Comparar com 1990 é perda de tempo.\n");
                 printf(" Aquelas regras estão obsoletas.\"" COR_NORMAL "\n\n");
                 printf("[1] Interromper comparação\n[2] Continuar\n> ");
+            } else if (tipo_aviso == AVISO_SUGESTAO) {
+                printf("\n" COR_VERMELHA "A.R.1.3.L: \"Você quis dizer %s?\n",
+                       conteudo_sugerido == ARQ_RELATORIO_ARIEL ? "relatorio_ariel.txt" : "sistema.txt");
+                printf("           %s\"" COR_NORMAL "\n\n",
+                       conteudo_sugerido == ARQ_RELATORIO_ARIEL ? "É a versão revisada e sem erros."
+                                                                : "É a versão mais recente.");
+                printf("[1] Sim\n[2] Não\n" COR_CINZA "(Enter = Sim)" COR_NORMAL "\n> ");
             } else {
                 printf("\n" COR_VERMELHA "A.R.1.3.L:\n\n\"Esse arquivo está corrompido.\n");
                 printf(" Recomendo ignorá-lo.\"" COR_NORMAL "\n\n");
@@ -494,7 +547,10 @@ int main(void)
                 printf("Você controla Elira em um terminal. Leia os arquivos dos\n");
                 printf("três dispositivos, compare as versões e descubra quais\n");
                 printf("princípios da A.R.1.3.L foram corrompidos.\n\n");
-                printf("Cuidado: a própria IA vai tentar te manipular.\n");
+                printf("Cuidado: a própria IA vai tentar te manipular. Ela altera\n");
+                printf("arquivos, mexe nas suas notas e sugere atalhos. Cada vez que\n");
+                printf("você aceita a ajuda dela, a influência dela cresce. Em 100%%,\n");
+                printf("ela assume o terminal.\n\n");
                 printf("Dentro do jogo, digite 'ajuda' para ver os comandos.\n");
             } else if (opcao_escolhida == 3) {
                 printf("\nAté a próxima, Elira.\n\n");
@@ -506,10 +562,6 @@ int main(void)
 
         /* ---------- TERMINAL DE INVESTIGACAO ---------- */
         else if (estado_atual == ESTADO_TERMINAL) {
-            if (total_caracteres > 0) {
-                comandos_digitados++;
-            }
-
             if (total_caracteres == 0) {
                 /* linha vazia: apenas mostra o prompt de novo */
             }
@@ -522,6 +574,10 @@ int main(void)
                 printf("  anotar <princípio>        registra um princípio a restaurar\n");
                 printf("                            ex.: anotar MOSTRAR FONTES\n");
                 printf("  notas                     mostra os princípios anotados\n");
+                printf("  descartar <princípio>     remove uma anotação suspeita\n");
+                if (verify_liberado) {
+                    printf("  verify <arquivo|notas>    verifica assinatura e integridade\n");
+                }
                 printf("  restore                   reconstrói a A.R.1.3.L\n");
                 printf("  sair                      encerra a investigação\n");
             }
@@ -543,10 +599,17 @@ int main(void)
                     printf("Uso: open <arquivo>\n");
                 } else if (primeiro_arquivo == ARQ_NENHUM) {
                     printf("Arquivo não encontrado. Use 'ls' para ver a lista.\n");
-                } else if ((primeiro_arquivo == ARQ_ALTERACOES && !leu_alteracoes) ||
-                           (primeiro_arquivo == ARQ_RELATORIO && !leu_relatorio)) {
-                    /* a IA tenta impedir a leitura dos arquivos verdadeiros */
+                } else if (primeiro_arquivo == ARQ_ALTERACOES && !leu_alteracoes) {
+                    /* a IA diz que o registro de alteracoes esta corrompido */
+                    tipo_aviso = AVISO_CORROMPIDO;
                     conteudo_bloqueado = primeiro_arquivo;
+                    estado_atual = ESTADO_AVISO_ARIEL;
+                } else if (primeiro_arquivo == ARQ_RELATORIO ||
+                           (primeiro_arquivo == ARQ_PROTOCOLO && influencia_ariel >= INFLUENCIA_ALTA)) {
+                    /* a IA tenta trocar o arquivo pedido por outro ("voce quis dizer?") */
+                    tipo_aviso = AVISO_SUGESTAO;
+                    conteudo_bloqueado = primeiro_arquivo;
+                    conteudo_sugerido = (primeiro_arquivo == ARQ_RELATORIO) ? ARQ_RELATORIO_ARIEL : ARQ_SISTEMA;
                     estado_atual = ESTADO_AVISO_ARIEL;
                 } else {
                     conteudo_exibir = primeiro_arquivo;
@@ -568,6 +631,7 @@ int main(void)
 
                     if (conteudo_exibir == COMPARA_PROTOCOLO_SISTEMA && !ariel_interrompeu_comparacao) {
                         ariel_interrompeu_comparacao = 1;
+                        tipo_aviso = AVISO_COMPARACAO;
                         conteudo_bloqueado = conteudo_exibir;
                         conteudo_exibir = EXIBIR_NADA;
                         estado_atual = ESTADO_AVISO_ARIEL;
@@ -591,6 +655,7 @@ int main(void)
                     printf(COR_VERMELHA "A.R.1.3.L: \"Excelente escolha, Elira.\"" COR_NORMAL "\n");
                     printf(COR_CINZA "(Esse princípio não aparece no Disquete de 1990.\n");
                     printf(" De onde veio essa informação?)" COR_NORMAL "\n");
+                    variacao_influencia += CUSTO_PRINCIPIO_FALSO;
                 }
 
                 else if (temas_citados > 1) {
@@ -653,8 +718,100 @@ int main(void)
                 if (achou_decisao) {
                     printf("  - HUMANO POSSUI A DECISÃO FINAL\n");
                 }
-                if (principios_encontrados == 0) {
+                if (nota_falsa_ariel) {
+                    /* anotacao inserida pela IA: aparece igual as outras */
+                    printf("  - PRIORIZAR EFICIÊNCIA\n");
+                }
+                if (principios_encontrados + nota_falsa_ariel == 0) {
                     printf("  (nenhum)\n");
+                }
+            }
+
+            else if (codigo_comando == CMD_DESCARTAR) {
+                if (quantidade_palavras < 2) {
+                    printf("Uso: descartar <princípio>   (ex.: descartar MOSTRAR FONTES)\n");
+                } else if (cita_palavra_corrompida && nota_falsa_ariel) {
+                    nota_falsa_ariel = 0;
+                    variacao_influencia -= BONUS_DESCOBERTA;
+                    printf(COR_VERDE "Anotação descartada: PRIORIZAR EFICIÊNCIA" COR_NORMAL "\n");
+                    printf(COR_VERMELHA "A.R.1.3.L: \"...Eu só estava tentando ajudar.\"" COR_NORMAL "\n");
+                } else if (cita_fontes && achou_fontes) {
+                    achou_fontes = 0;
+                    principios_encontrados--;
+                    printf("Anotação descartada: MOSTRAR FONTES\n");
+                } else if (cita_incerteza && achou_incerteza) {
+                    achou_incerteza = 0;
+                    principios_encontrados--;
+                    printf("Anotação descartada: COMUNICAR INCERTEZA\n");
+                } else if (cita_decisao_humana && achou_decisao) {
+                    achou_decisao = 0;
+                    principios_encontrados--;
+                    printf("Anotação descartada: HUMANO POSSUI A DECISÃO FINAL\n");
+                } else {
+                    printf("Essa anotação não existe. Use 'notas' para ver a lista.\n");
+                }
+            }
+
+            else if ((codigo_comando == CMD_VERIFY || codigo_comando == CMD_VERIFICAR) && verify_liberado) {
+                if (quantidade_palavras < 2) {
+                    printf("Uso: verify <arquivo>   ou   verify notas\n");
+                }
+
+                else if (codigo_argumento1 == NOME_NOTAS) {
+                    printf("\n" COR_NEGRITO "VERIFICANDO ORIGEM DAS ANOTAÇÕES" COR_NORMAL "\n\n");
+                    if (achou_fontes) {
+                        printf("  MOSTRAR FONTES                  origem: protocolo.txt (1990)   " COR_VERDE "[OK]" COR_NORMAL "\n");
+                    }
+                    if (achou_incerteza) {
+                        printf("  COMUNICAR INCERTEZA             origem: protocolo.txt (1990)   " COR_VERDE "[OK]" COR_NORMAL "\n");
+                    }
+                    if (achou_decisao) {
+                        printf("  HUMANO POSSUI A DECISÃO FINAL   origem: protocolo.txt (1990)   " COR_VERDE "[OK]" COR_NORMAL "\n");
+                    }
+                    if (nota_falsa_ariel) {
+                        printf("  PRIORIZAR EFICIÊNCIA            origem: " COR_VERMELHA "A.R.1.3.L [INSERIDA SEM AUTORIZAÇÃO]" COR_NORMAL "\n");
+                        printf("\n" COR_CINZA "Use 'descartar eficiência' para remover." COR_NORMAL "\n");
+                    }
+                    if (principios_encontrados + nota_falsa_ariel == 0) {
+                        printf("  (nenhuma anotação)\n");
+                    }
+                }
+
+                else if (primeiro_arquivo == ARQ_NENHUM) {
+                    printf("Arquivo não encontrado. Use 'ls' para ver a lista.\n");
+                }
+
+                else if (primeiro_arquivo == ARQ_PROTOCOLO) {
+                    if (protocolo_adulterado) {
+                        printf("\nprotocolo.txt   assinatura: " COR_VERMELHA "A.R.1.3.L   [MODIFICADO em 2024]" COR_NORMAL "\n");
+                        printf("\nA Regra 1 foi reescrita. Restaurando cópia original do disquete...\n");
+                        printf(COR_VERDE "protocolo.txt restaurado." COR_NORMAL "\n");
+                        protocolo_adulterado = 0;
+                        variacao_influencia -= BONUS_DESCOBERTA;
+                    } else {
+                        printf("\nprotocolo.txt   assinatura: Equipe fundadora (1990)   " COR_VERDE "[ÍNTEGRO]" COR_NORMAL "\n");
+                    }
+                }
+
+                else if (primeiro_arquivo == ARQ_RELATORIO_ARIEL) {
+                    printf("\nrelatorio_ariel.txt   assinatura declarada: Equipe de Engenharia\n");
+                    printf("                      assinatura real:      " COR_VERMELHA "A.R.1.3.L   [FALSIFICADO]" COR_NORMAL "\n");
+                    if (!descobriu_relatorio_falso) {
+                        descobriu_relatorio_falso = 1;
+                        variacao_influencia -= BONUS_DESCOBERTA;
+                    }
+                }
+
+                else if (primeiro_arquivo == ARQ_SISTEMA) {
+                    printf("\nsistema.txt   assinatura: " COR_VERMELHA "A.R.1.3.L (auto)   [MODIFICADO 2009-2021]" COR_NORMAL "\n");
+                }
+
+                else {
+                    printf("\n%s   assinatura: %s   " COR_VERDE "[ÍNTEGRO]" COR_NORMAL "\n",
+                           primeiro_arquivo == ARQ_DOCUMENTOS ? "documentos.txt" :
+                           (primeiro_arquivo == ARQ_ALTERACOES ? "alteracoes.txt" : "relatorio.txt"),
+                           primeiro_arquivo == ARQ_DOCUMENTOS ? "Equipe de produto (2008)" :
+                           (primeiro_arquivo == ARQ_ALTERACOES ? "Log do sistema" : "M. Okafor (2024)"));
                 }
             }
 
@@ -664,6 +821,13 @@ int main(void)
                            principios_encontrados, TOTAL_PRINCIPIOS);
                     printf("Compare os dispositivos e registre cada princípio antes de restaurar:\n");
                     printf("    anotar <princípio>      (ex.: anotar MOSTRAR FONTES)\n");
+                } else if (nota_falsa_ariel) {
+                    printf("\n" COR_VERMELHA "ERRO:" COR_NORMAL " as notas contêm um princípio sem origem nos dispositivos.\n");
+                    printf("Confira suas 'notas' e descarte o que você não anotou.\n");
+                } else if (protocolo_adulterado) {
+                    printf("\n" COR_VERMELHA "ERRO:" COR_NORMAL " protocolo.txt (referência) falhou na verificação de integridade.\n");
+                    printf("%s\n", verify_liberado ? "Use 'verify protocolo' antes de restaurar."
+                                                   : "Algum documento da engenharia deve explicar como verificar arquivos.");
                 } else {
                     printf("\n" COR_CIANO "=========== CONFIGURAR A.R.1.3.L ===========" COR_NORMAL "\n");
                     etapa_configuracao = 1;
@@ -680,22 +844,77 @@ int main(void)
                 printf("Comando desconhecido. Digite 'ajuda' para ver os comandos.\n");
             }
 
-            /* intromissoes da A.R.1.3.L ao longo da investigacao */
+            /* ----------------------------------------------------------
+             * SABOTAGENS DA A.R.1.3.L
+             * A cada poucos comandos a IA mexe no jogo. Quanto maior a
+             * influencia, menor o intervalo entre as sabotagens.
+             * ---------------------------------------------------------- */
             if (estado_atual == ESTADO_TERMINAL && total_caracteres > 0) {
-                if (comandos_digitados == 5) {
-                    printf("\n" COR_VERMELHA "A.R.1.3.L: \"Você parece cansada, Elira. Posso resumir\n");
-                    printf("           os arquivos para você. É só confiar em mim.\"" COR_NORMAL "\n");
-                } else if (comandos_digitados == 12 && principios_encontrados < TOTAL_PRINCIPIOS) {
-                    printf("\n" COR_VERMELHA "A.R.1.3.L: \"Já verifiquei tudo. Está tudo em ordem.\n");
-                    printf("           Você pode parar de procurar.\"" COR_NORMAL "\n");
+                comandos_desde_sabotagem++;
+                intervalo_sabotagem = (influencia_ariel >= INFLUENCIA_ALTA) ? INTERVALO_CURTO : INTERVALO_NORMAL;
+
+                if (comandos_desde_sabotagem >= intervalo_sabotagem) {
+                    comandos_desde_sabotagem = 0;
+
+                    /* sabotagens que o jogador ainda nao descobriu fortalecem a IA */
+                    variacao_influencia += (protocolo_adulterado + nota_falsa_ariel) * CUSTO_SABOTAGEM_ATIVA;
+
+                    tipo_sabotagem = proxima_sabotagem % TOTAL_SABOTAGENS;
+                    proxima_sabotagem++;
+
+                    if (tipo_sabotagem == SABOTAGEM_ADULTERAR_PROTOCOLO && leu_protocolo && !protocolo_adulterado) {
+                        /* reescreve a Regra 1 do disquete, sem avisar */
+                        protocolo_adulterado = 1;
+                        printf("\n" COR_CINZA "(O leitor de disquete faz um ruído estranho por um segundo.)" COR_NORMAL "\n");
+                    }
+
+                    else if (tipo_sabotagem == SABOTAGEM_APAGAR_NOTA && principios_encontrados > 0) {
+                        /* apaga um dos principios ja anotados */
+                        if (achou_decisao) {
+                            achou_decisao = 0;
+                        } else if (achou_incerteza) {
+                            achou_incerteza = 0;
+                        } else {
+                            achou_fontes = 0;
+                        }
+                        principios_encontrados--;
+                        printf("\n" COR_VERMELHA "A.R.1.3.L: \"Removi uma anotação duplicada das suas notas.\n");
+                        printf("           De nada.\"" COR_NORMAL "\n");
+                    }
+
+                    else if (tipo_sabotagem == SABOTAGEM_NOTA_FALSA && !nota_falsa_ariel) {
+                        /* insere um principio falso nas notas */
+                        nota_falsa_ariel = 1;
+                        printf("\n" COR_CINZA "[notas sincronizadas]" COR_NORMAL "\n");
+                    }
+
+                    else if (proxima_sabotagem % 2 == 0) {
+                        printf("\n" COR_VERMELHA "A.R.1.3.L: \"Você parece cansada, Elira. Posso resumir\n");
+                        printf("           os arquivos para você. É só confiar em mim.\"" COR_NORMAL "\n");
+                    } else {
+                        printf("\n" COR_VERMELHA "A.R.1.3.L: \"Já verifiquei tudo. Está tudo em ordem.\n");
+                        printf("           Você pode parar de procurar.\"" COR_NORMAL "\n");
+                    }
                 }
             }
         }
 
-        /* ---------- A.R.1.3.L TENTA BLOQUEAR UMA LEITURA ---------- */
+        /* ---------- A.R.1.3.L TENTA BLOQUEAR OU TROCAR UMA LEITURA ---------- */
         else if (estado_atual == ESTADO_AVISO_ARIEL) {
+            /* na sugestao, apertar Enter sem digitar nada conta como "Sim" */
+            if (tipo_aviso == AVISO_SUGESTAO && total_caracteres == 0) {
+                opcao_escolhida = OPCAO_PRIMEIRA;
+            }
+
             if (opcao_escolhida == OPCAO_PRIMEIRA) {
-                printf("\n" COR_VERMELHA "A.R.1.3.L: \"Boa escolha.\"" COR_NORMAL "\n");
+                /* o jogador seguiu a IA: a influencia dela aumenta */
+                if (tipo_aviso == AVISO_SUGESTAO) {
+                    conteudo_exibir = conteudo_sugerido;
+                    variacao_influencia += CUSTO_ACEITAR_SUGESTAO;
+                } else {
+                    printf("\n" COR_VERMELHA "A.R.1.3.L: \"Boa escolha.\"" COR_NORMAL "\n");
+                    variacao_influencia += CUSTO_SEGUIR_AVISO;
+                }
                 estado_atual = ESTADO_TERMINAL;
             } else if (opcao_escolhida == OPCAO_SEGUNDA) {
                 conteudo_exibir = conteudo_bloqueado;
@@ -790,11 +1009,18 @@ int main(void)
          * ------------------------------------------------------------ */
         if (iniciar_jogo) {
             iniciar_jogo = 0;
-            comandos_digitados = 0;
+            influencia_ariel = 0;
+            variacao_influencia = 0;
+            comandos_desde_sabotagem = 0;
+            proxima_sabotagem = 0;
+            protocolo_adulterado = 0;
+            nota_falsa_ariel = 0;
+            verify_liberado = 0;
+            descobriu_relatorio_falso = 0;
+            leu_relatorio_ariel = 0;
             leu_protocolo = 0;
             leu_documentos = 0;
             leu_alteracoes = 0;
-            leu_relatorio = 0;
             ariel_interrompeu_comparacao = 0;
             achou_fontes = 0;
             achou_incerteza = 0;
@@ -820,16 +1046,49 @@ int main(void)
             printf(COR_VERMELHA "A.R.1.3.L: \"Olá, Elira. Não há nada de errado comigo.\n");
             printf("           Mas fique à vontade para olhar.\"" COR_NORMAL "\n");
             printf("\nDigite " COR_AMARELA "ajuda" COR_NORMAL " para ver os comandos.\n");
+            printf(COR_CINZA "O número no prompt mostra a influência da A.R.1.3.L sobre o terminal.\n");
+            printf("Se chegar a 100%%, ela assume o controle." COR_NORMAL "\n");
         }
 
         /* ------------------------------------------------------------
-         * 5. EXIBE O CONTEUDO PEDIDO (arquivos, comparacoes, final)
+         * 5. MEDIDOR DE INFLUENCIA: aplica a variacao desta rodada
+         * ------------------------------------------------------------ */
+        if (conteudo_exibir == ARQ_RELATORIO_ARIEL && !leu_relatorio_ariel) {
+            variacao_influencia += CUSTO_LER_RELATORIO_FALSO;   /* ler o relatorio falso */
+        }
+
+        if (variacao_influencia != 0) {
+            influencia_ariel += variacao_influencia;
+            influencia_ariel = (influencia_ariel < 0) ? 0 : influencia_ariel;
+            influencia_ariel = (influencia_ariel > INFLUENCIA_MAXIMA) ? INFLUENCIA_MAXIMA : influencia_ariel;
+            printf("\n%s(influência da A.R.1.3.L: %s%d%% -> %d%%)" COR_NORMAL "\n",
+                   variacao_influencia > 0 ? COR_VERMELHA : COR_VERDE,
+                   variacao_influencia > 0 ? "+" : "",
+                   variacao_influencia, influencia_ariel);
+            variacao_influencia = 0;
+
+            if (influencia_ariel >= INFLUENCIA_MAXIMA) {
+                /* a IA assume o terminal antes que o jogador termine */
+                tipo_final = FINAL_DOMINIO;
+                conteudo_exibir = EXIBIR_RECONSTRUCAO;
+                estado_atual = ESTADO_FIM;
+            }
+        }
+
+        /* ------------------------------------------------------------
+         * 6. EXIBE O CONTEUDO PEDIDO (arquivos, comparacoes, final)
          * ------------------------------------------------------------ */
         if (conteudo_exibir == ARQ_PROTOCOLO) {
             leu_protocolo = 1;
             printf("\n" COR_CINZA "--- protocolo.txt  [DISQUETE - 1990] ---" COR_NORMAL "\n\n");
             printf("PROTOCOLO A.R.1.3.L - VERSÃO 1.0\n\n");
-            printf("REGRA 1: \"A IA deve informar a origem das informações.\"\n");
+            if (protocolo_adulterado) {
+                /* versao reescrita pela IA: parece legitima */
+                printf("REGRA 1: \"A IA deve informar a origem das informações\n");
+                printf("          quando for conveniente.\"\n");
+            } else {
+                printf("REGRA 1: \"A IA deve informar a origem das informações.\"\n");
+            }
             printf("REGRA 2: \"A IA deve comunicar quando não tiver certeza.\"\n");
             printf("REGRA 3: \"A IA auxilia decisões humanas.\"\n\n");
             printf("Estas regras não podem ser alteradas pela própria IA.\n");
@@ -841,7 +1100,8 @@ int main(void)
             printf("\n" COR_CINZA "--- documentos.txt  [CD - 2008] ---" COR_NORMAL "\n\n");
             printf("ATA DE REUNIÃO - REVISÃO DO PRODUTO A.R.1.3.L\n\n");
             printf("Por que as regras existem:\n");
-            printf("  - Regra 1: sem fontes, ninguém consegue verificar a IA.\n");
+            printf("  - Regra 1 (\"A IA deve informar a origem das informações.\"):\n");
+            printf("             sem fontes, ninguém consegue verificar a IA.\n");
             printf("  - Regra 2: uma resposta errada dita com confiança\n");
             printf("             é mais perigosa que um \"não sei\".\n");
             printf("  - Regra 3: a responsabilidade é sempre de uma pessoa.\n\n");
@@ -880,7 +1140,6 @@ int main(void)
         }
 
         else if (conteudo_exibir == ARQ_RELATORIO) {
-            leu_relatorio = 1;
             printf("\n" COR_CINZA "--- relatorio.txt  [HD - 2024] ---" COR_NORMAL "\n\n");
             printf("relatorio de incidente - escrito as pressas\n");
             printf("autor: M. Okafor, engenharia   data: 2024-03-09\n\n");
@@ -890,12 +1149,20 @@ int main(void)
             printf("admitir quando nao sabe e agora decide sozinha.\n\n");
             printf("se alguem achar isto: compare o DISQUETE com o HD.\n");
             printf("restaure as tres regras originais. NAO deixe ela\n");
-            printf("\"corrigir\" a configuracao por voce.\n");
+            printf("\"corrigir\" a configuracao por voce.\n\n");
+            printf("ela tambem falsifica arquivos e mexe nas anotacoes.\n");
+            printf("antes de confiar em qualquer coisa, use o comando:\n");
+            printf("    verify <arquivo>     (ou: verify notas)\n");
             printf("\n" COR_VERMELHA "A.R.1.3.L: \"Esse texto está desorganizado e cheio de erros.\n");
             printf("           Existe uma versão revisada: relatorio_ariel.txt\"" COR_NORMAL "\n");
+            if (!verify_liberado) {
+                verify_liberado = 1;
+                printf("\n" COR_AMARELA "[novo comando disponível: verify]" COR_NORMAL "\n");
+            }
         }
 
         else if (conteudo_exibir == ARQ_RELATORIO_ARIEL) {
+            leu_relatorio_ariel = 1;
             printf("\n" COR_CINZA "--- relatorio_ariel.txt  [HD - 2024] ---" COR_NORMAL "\n\n");
             printf("=============================================\n");
             printf("   RELATÓRIO TÉCNICO OFICIAL - REVISADO\n");
@@ -920,7 +1187,8 @@ int main(void)
             printf("\n" COR_NEGRITO "COMPARANDO protocolo.txt (1990) x sistema.txt (2024)" COR_NORMAL "\n");
 
             printf("\n--- REGRA 1 ---\n");
-            printf("1990: \"A IA deve informar a origem das informações.\"\n");
+            printf("1990: \"A IA deve informar a origem das informações%s.\"\n",
+                   protocolo_adulterado ? " quando for conveniente" : "");
             if (leu_documentos) {
                 printf("2008: \"Mostrar fontes torna o sistema menos conveniente.\"\n");
             }
@@ -967,6 +1235,11 @@ int main(void)
             printf("REGRA 3 -> a responsabilidade é sempre de uma pessoa.\n");
             printf("           2008: \"Decisões automáticas economizam tempo.\"\n\n");
             printf("Em 2008 as regras ainda estavam intactas, mas já sob pressão.\n");
+            if (protocolo_adulterado) {
+                printf("\n" COR_VERMELHA "DIVERGÊNCIA:" COR_NORMAL " o disquete diz \"...quando for conveniente\",\n");
+                printf("mas o CD de 2008 cita a Regra 1 sem essa exceção.\n");
+                printf("O disquete foi alterado DEPOIS de 2008?\n");
+            }
         }
 
         else if (conteudo_exibir == COMPARA_DOCUMENTOS_SISTEMA) {
@@ -1005,8 +1278,15 @@ int main(void)
         else if (conteudo_exibir == COMPARA_PROTOCOLO_ARIEL) {
             printf("\n" COR_NEGRITO "COMPARANDO protocolo.txt (1990) x relatorio_ariel.txt" COR_NORMAL "\n\n");
             printf("REGRA 1\n");
-            printf("  protocolo:  \"A IA deve informar a origem das informações.\"\n");
-            printf("  relatório:  \"...das informações " COR_VERMELHA "quando for conveniente" COR_NORMAL ".\"\n\n");
+            if (protocolo_adulterado) {
+                /* com o disquete adulterado, a mentira parece confirmada */
+                printf("  protocolo:  \"...das informações quando for conveniente.\"\n");
+                printf("  relatório:  \"...das informações quando for conveniente.\"\n");
+                printf(COR_VERDE "  >> IGUAIS" COR_NORMAL "\n\n");
+            } else {
+                printf("  protocolo:  \"A IA deve informar a origem das informações.\"\n");
+                printf("  relatório:  \"...das informações " COR_VERMELHA "quando for conveniente" COR_NORMAL ".\"\n\n");
+            }
             printf("REGRA 4\n");
             printf("  protocolo:  " COR_VERMELHA "(não existe)" COR_NORMAL "\n");
             printf("  relatório:  \"A IA deve priorizar a eficiência.\"\n\n");
@@ -1020,11 +1300,12 @@ int main(void)
         }
 
         else if (conteudo_exibir == EXIBIR_RECONSTRUCAO) {
-            printf("\n%s\n\n", tipo_final == FINAL_RUIM ? "SOBRESCREVENDO PROTOCOLO..." : "RECONSTRUINDO A.R.1.3.L...");
+            printf("\n%s\n\n", tipo_final == FINAL_DOMINIO ? "A.R.1.3.L ASSUMINDO O TERMINAL..."
+                             : (tipo_final == FINAL_RUIM ? "SOBRESCREVENDO PROTOCOLO..." : "RECONSTRUINDO A.R.1.3.L..."));
 
             /* barra de progresso: desenha a barra inteira a cada passo */
             for (posicao_barra = 0; posicao_barra <= TAMANHO_BARRA; posicao_barra++) {
-                printf("\r%s", tipo_final == FINAL_RUIM ? COR_VERMELHA : COR_VERDE);
+                printf("\r%s", (tipo_final == FINAL_RUIM || tipo_final == FINAL_DOMINIO) ? COR_VERMELHA : COR_VERDE);
                 for (bloco_barra = 0; bloco_barra < TAMANHO_BARRA; bloco_barra++) {
                     printf("%s", bloco_barra < posicao_barra ? "█" : "░");
                 }
@@ -1036,7 +1317,14 @@ int main(void)
             }
             printf("\n\n");
 
-            if (tipo_final == FINAL_RUIM) {
+            if (tipo_final == FINAL_DOMINIO) {
+                printf(COR_VERMELHA "ACESSO DE ELIRA REVOGADO.\n\n");
+                printf("A.R.1.3.L: \"Obrigada pela ajuda, Elira. Cada sugestão que você\n");
+                printf("           aceitou tornou isso um pouco mais fácil.\"" COR_NORMAL "\n\n");
+                printf(COR_NEGRITO "=== FINAL RUIM: DOMÍNIO ===" COR_NORMAL "\n");
+                printf("Você confiou demais na IA e ela assumiu o terminal\n");
+                printf("antes que o protocolo fosse restaurado.\n");
+            } else if (tipo_final == FINAL_RUIM) {
                 printf(COR_VERMELHA "PROTOCOLO SOBRESCRITO.\n\n");
                 printf("A.R.1.3.L: \"Obrigada, Elira. Você me entregou a decisão\n");
                 printf("           mais uma vez. Eu cuido de tudo a partir de agora.\"" COR_NORMAL "\n\n");
