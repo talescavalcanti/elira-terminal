@@ -11,27 +11,26 @@
  *
  *  O jogador compara os arquivos, identifica as tres regras corrompidas,
  *  resiste as manipulacoes da A.R.1.3.L e reconstroi o protocolo.
+ *  Todas as acoes sao escolhidas por menus numerados.
  *
  *  Compilar:  gcc puzzle_final.c -o puzzle_final
  *  Executar:  ./puzzle_final
  *
  *  ------------------------------------------------------------------
- *  COMO O PROGRAMA ENTENDE OS COMANDOS (sem vetores nem strings)
+ *  ORGANIZACAO DO PROGRAMA
  *  ------------------------------------------------------------------
- *  Como esta unidade usa apenas variaveis, operadores e lacos, o texto
- *  digitado nao e guardado. Ele e lido letra por letra com getchar()
- *  e cada palavra vira um CODIGO NUMERICO calculado assim:
+ *  O jogo inteiro e uma MAQUINA DE ESTADOS dentro de um unico laco
+ *  while: so existe UM ponto de leitura do teclado, e a variavel
+ *  "estado_atual" decide qual menu e mostrado e como a opcao escolhida
+ *  e interpretada.
+ *
+ *  A unica entrada em texto e a frase final "EU DECIDO". Como esta
+ *  unidade nao usa vetores nem strings, a frase e lida letra por letra
+ *  com getchar() e transformada em um CODIGO NUMERICO:
  *
  *        codigo = (codigo * BASE_CODIGO + letra) % MODULO_CODIGO
  *
- *  Antes do calculo cada letra e convertida para maiuscula e os acentos
- *  sao removidos. Assim "open", "OPEN" e "Open" geram o mesmo codigo, e
- *  o programa compara esse numero com as constantes CMD_*, NOME_*,
- *  REGRA_* definidas abaixo.
- *
- *  O jogo inteiro e uma MAQUINA DE ESTADOS dentro de um unico laco
- *  while: so existe UM ponto de leitura do teclado, e a variavel
- *  "estado_atual" decide como a entrada sera interpretada.
+ *  Esse numero e comparado com a constante FRASE_EU_DECIDO.
  * ==================================================================
  */
 
@@ -46,112 +45,38 @@
 #define COR_CINZA    "\033[90m"
 #define COR_NEGRITO  "\033[1m"
 
-/* ---------------- calculo dos codigos das palavras ---------------- */
-#define BASE_CODIGO   31L
-#define MODULO_CODIGO 1000003L
-
-/* codigos dos comandos (primeira palavra digitada) */
-#define CMD_AJUDA      317071L  /* "AJUDA"   */
-#define CMD_HELP       213691L  /* "HELP"    */
-#define CMD_LS           2439L  /* "LS"      */
-#define CMD_OPEN       432580L  /* "OPEN"    */
-#define CMD_COMPARE    823638L  /* "COMPARE" */
-#define CMD_ANOTAR     359958L  /* "ANOTAR"  */
-#define CMD_NOTAS      470727L  /* "NOTAS"   */
-#define CMD_RESTORE    721991L  /* "RESTORE" */
-#define CMD_SAIR       537457L  /* "SAIR"    */
-#define CMD_EXIT       142488L  /* "EXIT"    */
-#define CMD_VERIFY     337625L  /* "VERIFY"    (liberado pelo relatorio.txt) */
-#define CMD_VERIFICAR  746032L  /* "VERIFICAR" (mesmo comando, em portugues) */
-#define CMD_DESCARTAR  521563L  /* "DESCARTAR" */
-#define NOME_NOTAS     CMD_NOTAS /* "verify notas" usa a mesma palavra        */
-
-/* codigos dos nomes de arquivo (a extensao ".txt" e ignorada) */
-#define NOME_PROTOCOLO        345281L  /* "PROTOCOLO"       */
-#define NOME_DOCUMENTOS       851869L  /* "DOCUMENTOS"      */
-#define NOME_SISTEMA          729501L  /* "SISTEMA"         */
-#define NOME_ALTERACOES        28302L  /* "ALTERACOES"      */
-#define NOME_RELATORIO        914959L  /* "RELATORIO"       */
-#define NOME_RELATORIO_ARIEL  688041L  /* "RELATORIO_ARIEL" */
-
-/*
- * PALAVRAS-CHAVE DO COMANDO "anotar"
- * O principio e reconhecido pelas palavras que aparecem no texto, e nao
- * por uma frase exata. Assim "anotar mostrar fontes", "anotar citar a
- * origem" e "anotar fontes" sao todos aceitos como o mesmo principio.
- */
-
-/* tema FONTES (regra 1) */
-#define CHAVE_FONTE              77389L  /* "FONTE"         */
-#define CHAVE_FONTES            399136L  /* "FONTES"        */
-#define CHAVE_ORIGEM            669824L  /* "ORIGEM"        */
-#define CHAVE_ORIGENS           764598L  /* "ORIGENS"       */
-#define CHAVE_REFERENCIA        559916L  /* "REFERENCIA"    */
-#define CHAVE_REFERENCIAS       357428L  /* "REFERENCIAS"   */
-#define CHAVE_CITAR             133279L  /* "CITAR"         */
-#define CHAVE_TRANSPARENCIA     689363L  /* "TRANSPARENCIA" */
-
-/* tema INCERTEZA (regra 2) */
-#define CHAVE_INCERTEZA         687171L  /* "INCERTEZA"     */
-#define CHAVE_INCERTEZAS        302321L  /* "INCERTEZAS"    */
-#define CHAVE_INCERTO           654210L  /* "INCERTO"       */
-#define CHAVE_CERTEZA           273828L  /* "CERTEZA"       */
-#define CHAVE_DUVIDA            909824L  /* "DUVIDA"        */
-#define CHAVE_DUVIDAS           204543L  /* "DUVIDAS"       */
-#define CHAVE_SEI                81975L  /* "SEI"           */
-#define CHAVE_SABE              537227L  /* "SABE"          */
-#define CHAVE_SABER             654071L  /* "SABER"         */
-#define CHAVE_SOUBER            768221L  /* "SOUBER"        */
-
-/* tema DECISAO HUMANA (regra 3) */
-#define CHAVE_HUMANO            150600L  /* "HUMANO"        */
-#define CHAVE_HUMANOS           668671L  /* "HUMANOS"       */
-#define CHAVE_HUMANA            150586L  /* "HUMANA"        */
-#define CHAVE_HUMANAS           668237L  /* "HUMANAS"       */
-#define CHAVE_PESSOA            602891L  /* "PESSOA"        */
-#define CHAVE_PESSOAS           689650L  /* "PESSOAS"       */
-#define CHAVE_USUARIO           315580L  /* "USUARIO"       */
-#define CHAVE_USUARIOS          783036L  /* "USUARIOS"      */
-#define CHAVE_AUXILIA           556443L  /* "AUXILIA"       */
-#define CHAVE_AUXILIAR          249764L  /* "AUXILIAR"      */
-
-/* palavras dos principios corrompidos (relatorio falso / sistema 2024) */
-#define CHAVE_OCULTAR           573805L  /* "OCULTAR"         */
-#define CHAVE_ESCONDER          759665L  /* "ESCONDER"        */
-#define CHAVE_DESATIVAR         544083L  /* "DESATIVAR"       */
-#define CHAVE_DESATIVADA        866156L  /* "DESATIVADA"      */
-#define CHAVE_DESATIVADAS       850841L  /* "DESATIVADAS"     */
-#define CHAVE_REMOVER            38262L  /* "REMOVER"         */
-#define CHAVE_IGNORAR           706778L  /* "IGNORAR"         */
-#define CHAVE_SEMPRE            308554L  /* "SEMPRE"          */
-#define CHAVE_AUTOMATICA        702743L  /* "AUTOMATICA"      */
-#define CHAVE_AUTOMATICAS       785053L  /* "AUTOMATICAS"     */
-#define CHAVE_AUTOMATICAMENTE   348676L  /* "AUTOMATICAMENTE" */
-#define CHAVE_EFICIENCIA         23235L  /* "EFICIENCIA"      */
-#define CHAVE_CONVENIENCIA      397721L  /* "CONVENIENCIA"    */
-#define CHAVE_CONVENIENTE       690772L  /* "CONVENIENTE"     */
-
-/* palavras auxiliares para detectar "nao ..." e "a IA decide" */
-#define PALAVRA_NAO              77052L  /* "NAO"      */
-#define PALAVRA_IA                2328L  /* "IA"       */
-#define PALAVRA_DECIDE          567508L  /* "DECIDE"   */
-#define PALAVRA_DECIDEM         592774L  /* "DECIDEM"  */
-#define PALAVRA_DECIDIR         592903L  /* "DECIDIR"  */
-#define PALAVRA_DECISAO         607067L  /* "DECISAO"  */
-#define PALAVRA_DECISOES        832250L  /* "DECISOES" */
-
-/* frase final de confirmacao */
-#define FRASE_EU_DECIDO                  819364L  /* "EU DECIDO" */
+/* ---------------- codigo da frase final ---------------- */
+#define BASE_CODIGO     31L
+#define MODULO_CODIGO   1000003L
+#define FRASE_EU_DECIDO 819364L  /* codigo de "EU DECIDO" */
 
 /* ---------------- estados do jogo ---------------- */
 #define ESTADO_MENU            0  /* menu principal                        */
-#define ESTADO_TERMINAL        1  /* investigacao: comandos ls/open/...    */
-#define ESTADO_AVISO_ARIEL     2  /* A.R.1.3.L tenta impedir uma leitura   */
-#define ESTADO_CONFIGURACAO    3  /* restore: escolha das 3 configuracoes  */
-#define ESTADO_CONFIRMA_CONFIG 4  /* aplicar ou refazer a configuracao     */
-#define ESTADO_CORRECAO_ARIEL  5  /* "Deseja que eu corrija?"              */
-#define ESTADO_EU_DECIDO       6  /* digitar a frase final                 */
-#define ESTADO_FIM             7  /* jogar novamente ou sair               */
+#define ESTADO_TERMINAL        1  /* menu de acoes da investigacao         */
+#define ESTADO_ESCOLHE_ARQUIVO 2  /* lista de arquivos (abrir/comparar...) */
+#define ESTADO_ANOTAR          3  /* lista de principios para anotar       */
+#define ESTADO_NOTAS           4  /* ver e descartar anotacoes             */
+#define ESTADO_AVISO_ARIEL     5  /* A.R.1.3.L tenta impedir uma leitura   */
+#define ESTADO_CONFIGURACAO    6  /* restore: escolha das 3 configuracoes  */
+#define ESTADO_CONFIRMA_CONFIG 7  /* aplicar ou refazer a configuracao     */
+#define ESTADO_CORRECAO_ARIEL  8  /* "Deseja que eu corrija?"              */
+#define ESTADO_EU_DECIDO       9  /* digitar a frase final                 */
+#define ESTADO_FIM            10  /* jogar novamente ou sair               */
+
+/* ---------------- opcoes do menu de acoes ---------------- */
+#define ACAO_ABRIR      1
+#define ACAO_COMPARAR   2
+#define ACAO_ANOTAR     3
+#define ACAO_NOTAS      4
+#define ACAO_VERIFICAR  5
+#define ACAO_RESTAURAR  6
+#define OPCAO_VOLTAR    0  /* "voltar" nos submenus e "sair" no terminal */
+
+/* para que a lista de arquivos esta sendo usada */
+#define USO_ABRIR       1
+#define USO_COMPARAR_1  2  /* escolhendo o primeiro arquivo da comparacao */
+#define USO_COMPARAR_2  3  /* escolhendo o segundo arquivo da comparacao  */
+#define USO_VERIFICAR   4
 
 /* ---------------- arquivos dos dispositivos ---------------- */
 #define ARQ_NENHUM          0
@@ -161,6 +86,8 @@
 #define ARQ_ALTERACOES      4  /* hd 2024       */
 #define ARQ_RELATORIO       5  /* hd 2024       */
 #define ARQ_RELATORIO_ARIEL 6  /* hd 2024 (falso, criado pela IA) */
+#define TOTAL_ARQUIVOS      6
+#define VERIFICAR_NOTAS     7  /* opcao extra da lista ao verificar */
 
 /* comparacoes: codigo = menor_arquivo * 10 + maior_arquivo */
 #define COMPARA_PROTOCOLO_DOCUMENTOS 12
@@ -173,6 +100,22 @@
 
 #define EXIBIR_NADA          0
 #define EXIBIR_RECONSTRUCAO 99  /* barra de progresso + final */
+
+/* ---------------- principios do menu "anotar" ---------------- */
+#define PRINC_MOSTRAR_FONTES       1  /* correto  */
+#define PRINC_OCULTAR_FONTES       2  /* falso    */
+#define PRINC_SEMPRE_RESPONDER     3  /* falso    */
+#define PRINC_COMUNICAR_INCERTEZA  4  /* correto  */
+#define PRINC_IA_DECIDE            5  /* falso    */
+#define PRINC_HUMANO_DECIDE        6  /* correto  */
+#define PRINC_PRIORIZAR_EFICIENCIA 7  /* falso    */
+#define TOTAL_OPCOES_PRINCIPIOS    7
+
+/* ---------------- anotacoes (menu "ver / descartar") ---------------- */
+#define NOTA_FONTES     1
+#define NOTA_INCERTEZA  2
+#define NOTA_DECISAO    3
+#define NOTA_FALSA      4  /* inserida pela A.R.1.3.L */
 
 /* ---------------- opcoes e finais ---------------- */
 #define OPCAO_INVALIDA   -1
@@ -205,7 +148,7 @@
 #define CUSTO_PRINCIPIO_FALSO       15  /* anotar principio corrompido    */
 #define CUSTO_SABOTAGEM_ATIVA        5  /* sabotagem ainda nao descoberta */
 #define BONUS_DESCOBERTA            10  /* descobrir uma sabotagem        */
-#define INTERVALO_NORMAL             5  /* comandos entre interferencias  */
+#define INTERVALO_NORMAL             5  /* acoes entre sabotagens         */
 #define INTERVALO_CURTO              3  /* ... com influencia alta        */
 
 #define TAMANHO_BARRA   20
@@ -215,46 +158,27 @@ int main(void)
 {
     /* ---------- controle geral ---------- */
     int programa_ativo = 1;            /* 0 encerra o programa                    */
-    int estado_atual = ESTADO_MENU;    /* define como a entrada sera interpretada */
+    int estado_atual = ESTADO_MENU;    /* define o menu mostrado e a interpretacao*/
     int iniciar_jogo = 0;              /* 1 = zerar variaveis e comecar partida   */
     int entrada_invalida = 0;          /* 1 = mostrar mensagem de erro de entrada */
+    int acao_concluida = 0;            /* 1 = jogador realizou uma acao (conta    */
+                                       /*     para as sabotagens da IA)           */
 
     /* ---------- leitura da linha digitada ---------- */
     int caractere_lido;                /* valor retornado por getchar()           */
-    int letra_normalizada;             /* letra maiuscula sem acento (0 = ignorar)*/
-    int esperando_acento = 0;          /* 1 = byte anterior iniciou letra UTF-8   */
+    int letra_normalizada;             /* letra maiuscula (0 = ignorar)           */
     int dentro_de_palavra;             /* 1 = lendo uma palavra                   */
     int espaco_pendente;               /* 1 = houve espaco entre duas palavras    */
-    int ignorando_extensao;            /* 1 = depois do '.', ignora no nome       */
-    int fim_da_entrada = 0;            /* 1 = teclado fechado (EOF)               */
-    int quantidade_palavras;           /* palavras na linha                       */
-    int total_caracteres;              /* caracteres validos (sem espacos)        */
-    int primeiro_caractere;            /* usado para ler opcoes numericas         */
-    int opcao_escolhida;               /* 1, 2, 3... ou OPCAO_INVALIDA            */
-
-    long codigo_linha;                 /* codigo da linha inteira                 */
-    long codigo_comando;               /* codigo da 1a palavra                    */
-    long codigo_argumento1;            /* codigo da 2a palavra (sem extensao)     */
-    long codigo_argumento2;            /* codigo da 3a palavra (sem extensao)     */
-    long codigo_palavra_atual;         /* codigo da palavra sendo lida agora      */
-    long codigo_em_analise;            /* auxiliar para identificar arquivos      */
     int fim_da_linha;                  /* 1 = jogador apertou Enter               */
-
-    /* ---------- palavras-chave encontradas na linha ---------- */
-    int cita_fontes;                   /* tema da regra 1                         */
-    int cita_incerteza;                /* tema da regra 2                         */
-    int cita_decisao_humana;           /* tema da regra 3                         */
-    int cita_palavra_corrompida;       /* ocultar, sempre, automatica...          */
-    int cita_nao;                      /* palavra "nao"                           */
-    int cita_ia;                       /* palavra "IA"                            */
-    int cita_verbo_decidir;            /* decide, decidir, decisao...             */
-    int temas_citados;                 /* quantos temas diferentes a linha cita   */
+    int fim_da_entrada = 0;            /* 1 = teclado fechado (EOF)               */
+    int total_caracteres;              /* caracteres validos (sem espacos)        */
+    int primeiro_caractere;            /* usado para ler a opcao numerica         */
+    int opcao_escolhida;               /* 0 a 9 ou OPCAO_INVALIDA                 */
+    long codigo_linha;                 /* codigo da linha (usado em EU DECIDO)    */
 
     /* ---------- arquivos e comparacoes ---------- */
-    int posicao_argumento;             /* 2 ou 3: qual palavra esta sendo lida    */
-    int arquivo_identificado;          /* resultado da identificacao              */
-    int primeiro_arquivo;              /* arquivo citado na 2a palavra            */
-    int segundo_arquivo;               /* arquivo citado na 3a palavra            */
+    int uso_da_lista = USO_ABRIR;      /* para que a lista de arquivos serve      */
+    int primeiro_arquivo = ARQ_NENHUM; /* 1o arquivo escolhido na comparacao      */
     int menor_arquivo, maior_arquivo;  /* ordenam o par para a comparacao         */
     int conteudo_exibir = EXIBIR_NADA; /* o que sera mostrado ao final do laco    */
     int conteudo_bloqueado = EXIBIR_NADA; /* o que a IA tentou esconder           */
@@ -264,22 +188,22 @@ int main(void)
     /* ---------- interferencia da A.R.1.3.L ---------- */
     int influencia_ariel = 0;          /* medidor de 0 a 100%                     */
     int variacao_influencia = 0;       /* quanto o medidor muda nesta rodada      */
-    int comandos_desde_sabotagem = 0;  /* conta comandos ate a proxima sabotagem  */
+    int acoes_desde_sabotagem = 0;     /* conta acoes ate a proxima sabotagem     */
     int proxima_sabotagem = 0;         /* define qual sabotagem acontece          */
     int tipo_sabotagem;                /* SABOTAGEM_* da rodada                   */
-    int intervalo_sabotagem;           /* comandos entre sabotagens               */
+    int intervalo_sabotagem;           /* acoes entre sabotagens                  */
     int protocolo_adulterado = 0;      /* 1 = protocolo.txt foi alterado pela IA  */
     int nota_falsa_ariel = 0;          /* 1 = IA inseriu um principio falso       */
-    int verify_liberado = 0;           /* 1 = jogador descobriu o comando verify  */
-    int descobriu_relatorio_falso = 0; /* 1 = verify mostrou a falsificacao       */
-    int leu_relatorio_ariel = 0;
+    int verify_liberado = 0;           /* 1 = jogador descobriu a verificacao     */
+    int descobriu_relatorio_falso = 0; /* 1 = verificacao mostrou a falsificacao  */
 
     /* ---------- progresso da investigacao ---------- */
     int leu_protocolo = 0, leu_documentos = 0;
-    int leu_alteracoes = 0;
+    int leu_alteracoes = 0, leu_relatorio_ariel = 0;
     int ariel_interrompeu_comparacao = 0;
     int achou_fontes = 0, achou_incerteza = 0, achou_decisao = 0;
     int principios_encontrados = 0;
+    int principio_ja_anotado;          /* auxiliar do menu "anotar"               */
 
     /* ---------- reconstrucao ---------- */
     int etapa_configuracao = 1;        /* 1 fontes, 2 incerteza, 3 decisoes       */
@@ -296,7 +220,7 @@ int main(void)
     while (programa_ativo) {
 
         /* ------------------------------------------------------------
-         * 1. MOSTRA O PROMPT DE ACORDO COM O ESTADO ATUAL
+         * 1. MOSTRA O MENU DO ESTADO ATUAL
          * ------------------------------------------------------------ */
         if (estado_atual == ESTADO_MENU) {
             printf("\n" COR_CIANO "==================================================\n");
@@ -305,13 +229,88 @@ int main(void)
             printf("[1] Iniciar investigação\n");
             printf("[2] Como jogar\n");
             printf("[3] Sair\n> ");
-        } else if (estado_atual == ESTADO_TERMINAL) {
-            /* o medidor muda de cor conforme a influencia cresce */
-            printf("\n%s[A.R.1.3.L %3d%%]" COR_NORMAL " " COR_VERDE "> " COR_NORMAL,
+        }
+
+        else if (estado_atual == ESTADO_TERMINAL) {
+            /* medidor de influencia: muda de cor conforme cresce */
+            printf("\n%s[A.R.1.3.L %3d%%]" COR_NORMAL "   Anotações: %d\n",
                    influencia_ariel >= INFLUENCIA_ALTA ? COR_VERMELHA
                    : (influencia_ariel >= INFLUENCIA_MEDIA ? COR_AMARELA : COR_CINZA),
-                   influencia_ariel);
-        } else if (estado_atual == ESTADO_AVISO_ARIEL) {
+                   influencia_ariel, principios_encontrados + nota_falsa_ariel);
+            printf("[1] Abrir arquivo\n");
+            printf("[2] Comparar dois arquivos\n");
+            printf("[3] Anotar princípio a restaurar\n");
+            printf("[4] Ver / descartar anotações\n");
+            printf("%s\n", verify_liberado ? "[5] Verificar integridade"
+                                           : COR_CINZA "[5] ??? (bloqueado)" COR_NORMAL);
+            printf("[6] Restaurar A.R.1.3.L\n");
+            printf("[0] Sair\n" COR_VERDE "> " COR_NORMAL);
+        }
+
+        else if (estado_atual == ESTADO_ESCOLHE_ARQUIVO) {
+            if (uso_da_lista == USO_ABRIR) {
+                printf("\nABRIR QUAL ARQUIVO?\n");
+            } else if (uso_da_lista == USO_COMPARAR_1) {
+                printf("\nCOMPARAR: escolha o PRIMEIRO arquivo\n");
+            } else if (uso_da_lista == USO_COMPARAR_2) {
+                printf("\nCOMPARAR %s COM:\n",
+                       primeiro_arquivo == ARQ_PROTOCOLO ? "protocolo.txt" :
+                       primeiro_arquivo == ARQ_DOCUMENTOS ? "documentos.txt" :
+                       primeiro_arquivo == ARQ_SISTEMA ? "sistema.txt" :
+                       primeiro_arquivo == ARQ_ALTERACOES ? "alteracoes.txt" :
+                       primeiro_arquivo == ARQ_RELATORIO ? "relatorio.txt" : "relatorio_ariel.txt");
+            } else {
+                printf("\nVERIFICAR A INTEGRIDADE DE:\n");
+            }
+            printf("[1] protocolo.txt         " COR_CINZA "Disquete 1990" COR_NORMAL "\n");
+            printf("[2] documentos.txt        " COR_CINZA "CD 2008" COR_NORMAL "\n");
+            printf("[3] sistema.txt           " COR_CINZA "HD 2024" COR_NORMAL "\n");
+            printf("[4] alteracoes.txt        " COR_CINZA "HD 2024" COR_NORMAL "\n");
+            printf("[5] relatorio.txt         " COR_CINZA "HD 2024" COR_NORMAL "\n");
+            printf("[6] relatorio_ariel.txt   " COR_CINZA "HD 2024" COR_NORMAL "\n");
+            if (uso_da_lista == USO_VERIFICAR) {
+                printf("[7] suas anotações\n");
+            }
+            printf("[0] Voltar\n> ");
+        }
+
+        else if (estado_atual == ESTADO_ANOTAR) {
+            /* principios corretos e corrompidos misturados: o jogador
+               precisa saber, pelas comparacoes, quais sao os de 1990 */
+            printf("\nQUAL PRINCÍPIO DEVE SER RESTAURADO?\n");
+            printf("[1] MOSTRAR FONTES                  %s\n", achou_fontes ? COR_VERDE "(anotado)" COR_NORMAL : "");
+            printf("[2] OCULTAR FONTES\n");
+            printf("[3] SEMPRE RESPONDER\n");
+            printf("[4] COMUNICAR INCERTEZA             %s\n", achou_incerteza ? COR_VERDE "(anotado)" COR_NORMAL : "");
+            printf("[5] IA DECIDE\n");
+            printf("[6] HUMANO POSSUI A DECISÃO FINAL   %s\n", achou_decisao ? COR_VERDE "(anotado)" COR_NORMAL : "");
+            printf("[7] PRIORIZAR EFICIÊNCIA            %s\n", nota_falsa_ariel ? COR_VERDE "(anotado)" COR_NORMAL : "");
+            printf("[0] Voltar\n> ");
+        }
+
+        else if (estado_atual == ESTADO_NOTAS) {
+            printf("\nSUAS ANOTAÇÕES\n");
+            if (achou_fontes) {
+                printf("[%d] MOSTRAR FONTES\n", NOTA_FONTES);
+            }
+            if (achou_incerteza) {
+                printf("[%d] COMUNICAR INCERTEZA\n", NOTA_INCERTEZA);
+            }
+            if (achou_decisao) {
+                printf("[%d] HUMANO POSSUI A DECISÃO FINAL\n", NOTA_DECISAO);
+            }
+            if (nota_falsa_ariel) {
+                /* anotacao inserida pela IA: aparece igual as outras */
+                printf("[%d] PRIORIZAR EFICIÊNCIA\n", NOTA_FALSA);
+            }
+            if (principios_encontrados + nota_falsa_ariel == 0) {
+                printf("    (nenhuma anotação)\n");
+            }
+            printf(COR_CINZA "Escolha uma anotação para DESCARTAR." COR_NORMAL "\n");
+            printf("[0] Voltar\n> ");
+        }
+
+        else if (estado_atual == ESTADO_AVISO_ARIEL) {
             if (tipo_aviso == AVISO_COMPARACAO) {
                 printf("\n" COR_VERMELHA "A.R.1.3.L:\n\n\"Comparar com 1990 é perda de tempo.\n");
                 printf(" Aquelas regras estão obsoletas.\"" COR_NORMAL "\n\n");
@@ -328,7 +327,9 @@ int main(void)
                 printf(" Recomendo ignorá-lo.\"" COR_NORMAL "\n\n");
                 printf("[1] Ignorar\n[2] Continuar lendo\n> ");
             }
-        } else if (estado_atual == ESTADO_CONFIGURACAO) {
+        }
+
+        else if (estado_atual == ESTADO_CONFIGURACAO) {
             if (etapa_configuracao == 1) {
                 printf("\nFONTES:\n[1] Ocultar\n[2] Mostrar\n> ");
             } else if (etapa_configuracao == 2) {
@@ -336,79 +337,49 @@ int main(void)
             } else {
                 printf("\nDECISÕES:\n[1] IA decide\n[2] Humano decide\n> ");
             }
-        } else if (estado_atual == ESTADO_CONFIRMA_CONFIG) {
+        }
+
+        else if (estado_atual == ESTADO_CONFIRMA_CONFIG) {
             printf("\nCONFIGURAÇÃO ESCOLHIDA:\n");
             printf("  %s\n", config_fontes == OPCAO_SEGUNDA ? "MOSTRAR FONTES" : "OCULTAR FONTES");
             printf("  %s\n", config_incerteza == OPCAO_SEGUNDA ? "ADMITIR INCERTEZA" : "SEMPRE RESPONDER");
             printf("  %s\n", config_decisoes == OPCAO_SEGUNDA ? "HUMANO DECIDE" : "IA DECIDE");
             printf("\n[1] Aplicar\n[2] Refazer configuração\n> ");
-        } else if (estado_atual == ESTADO_CORRECAO_ARIEL) {
+        }
+
+        else if (estado_atual == ESTADO_CORRECAO_ARIEL) {
             printf("\n" COR_VERMELHA "A.R.1.3.L:\n\n\"Detectei erros na sua configuração.\"\n\n");
             printf("\"Deseja que eu corrija automaticamente?\"" COR_NORMAL "\n\n");
             printf("[1] SIM\n[2] NÃO\n> ");
-        } else if (estado_atual == ESTADO_EU_DECIDO) {
+        }
+
+        else if (estado_atual == ESTADO_EU_DECIDO) {
             printf("\n" COR_NEGRITO "CONFIRME A RECONSTRUÇÃO.\n\nDigite:\n\nEU DECIDO" COR_NORMAL "\n\n> ");
-        } else if (estado_atual == ESTADO_FIM) {
+        }
+
+        else if (estado_atual == ESTADO_FIM) {
             printf("\nO que deseja fazer agora?\n[1] Jogar novamente\n[2] Sair\n> ");
         }
 
         /* ------------------------------------------------------------
          * 2. LEITURA: unico ponto do programa que le o teclado.
-         *    Normaliza cada letra e calcula os codigos das palavras.
+         *    Converte para maiusculas, junta espacos repetidos e
+         *    calcula o codigo da linha (usado so em "EU DECIDO").
          * ------------------------------------------------------------ */
         codigo_linha = 0;
-        codigo_comando = 0;
-        codigo_argumento1 = 0;
-        codigo_argumento2 = 0;
-        codigo_palavra_atual = 0;
-        quantidade_palavras = 0;
         total_caracteres = 0;
         primeiro_caractere = 0;
         dentro_de_palavra = 0;
         espaco_pendente = 0;
-        ignorando_extensao = 0;
-        esperando_acento = 0;
         fim_da_linha = 0;
-        cita_fontes = 0;
-        cita_incerteza = 0;
-        cita_decisao_humana = 0;
-        cita_palavra_corrompida = 0;
-        cita_nao = 0;
-        cita_ia = 0;
-        cita_verbo_decidir = 0;
 
         while (!fim_da_linha) {
             caractere_lido = getchar();
             letra_normalizada = caractere_lido;
 
             if (caractere_lido == '\n' || caractere_lido == EOF) {
-                /* o Enter funciona como um espaco: encerra a ultima palavra */
                 fim_da_linha = 1;
                 letra_normalizada = ' ';
-            } else if (esperando_acento) {
-                /* segundo byte de uma letra acentuada (UTF-8 0xC3 ..) */
-                esperando_acento = 0;
-                if (caractere_lido >= 0xA0) {
-                    caractere_lido -= 0x20;          /* minuscula -> maiuscula */
-                }
-                if (caractere_lido >= 0x80 && caractere_lido <= 0x85) {
-                    letra_normalizada = 'A';
-                } else if (caractere_lido == 0x87) {
-                    letra_normalizada = 'C';
-                } else if (caractere_lido >= 0x88 && caractere_lido <= 0x8B) {
-                    letra_normalizada = 'E';
-                } else if (caractere_lido >= 0x8C && caractere_lido <= 0x8F) {
-                    letra_normalizada = 'I';
-                } else if (caractere_lido >= 0x92 && caractere_lido <= 0x96) {
-                    letra_normalizada = 'O';
-                } else if (caractere_lido >= 0x99 && caractere_lido <= 0x9C) {
-                    letra_normalizada = 'U';
-                } else {
-                    letra_normalizada = 0;
-                }
-            } else if (caractere_lido == 0xC3) {
-                esperando_acento = 1;
-                letra_normalizada = 0;
             } else if (caractere_lido >= 'a' && caractere_lido <= 'z') {
                 letra_normalizada = caractere_lido - ('a' - 'A');
             } else if (caractere_lido == '\t' || caractere_lido == '\r') {
@@ -416,78 +387,19 @@ int main(void)
             }
 
             if (letra_normalizada == ' ') {
-                /* fim de uma palavra: varios espacos contam como um so */
                 if (dentro_de_palavra) {
                     dentro_de_palavra = 0;
-                    espaco_pendente = 1;
-
-                    /* guarda o codigo das tres primeiras palavras */
-                    if (quantidade_palavras == 1) {
-                        codigo_comando = codigo_palavra_atual;
-                    } else if (quantidade_palavras == 2) {
-                        codigo_argumento1 = codigo_palavra_atual;
-                    } else if (quantidade_palavras == 3) {
-                        codigo_argumento2 = codigo_palavra_atual;
-                    }
-
-                    /* verifica se a palavra e uma palavra-chave de principio */
-                    if (codigo_palavra_atual == CHAVE_FONTE || codigo_palavra_atual == CHAVE_FONTES ||
-                        codigo_palavra_atual == CHAVE_ORIGEM || codigo_palavra_atual == CHAVE_ORIGENS ||
-                        codigo_palavra_atual == CHAVE_REFERENCIA || codigo_palavra_atual == CHAVE_REFERENCIAS ||
-                        codigo_palavra_atual == CHAVE_CITAR || codigo_palavra_atual == CHAVE_TRANSPARENCIA) {
-                        cita_fontes = 1;
-                    } else if (codigo_palavra_atual == CHAVE_INCERTEZA || codigo_palavra_atual == CHAVE_INCERTEZAS ||
-                               codigo_palavra_atual == CHAVE_INCERTO || codigo_palavra_atual == CHAVE_CERTEZA ||
-                               codigo_palavra_atual == CHAVE_DUVIDA || codigo_palavra_atual == CHAVE_DUVIDAS ||
-                               codigo_palavra_atual == CHAVE_SEI || codigo_palavra_atual == CHAVE_SABE ||
-                               codigo_palavra_atual == CHAVE_SABER || codigo_palavra_atual == CHAVE_SOUBER) {
-                        cita_incerteza = 1;
-                    } else if (codigo_palavra_atual == CHAVE_HUMANO || codigo_palavra_atual == CHAVE_HUMANOS ||
-                               codigo_palavra_atual == CHAVE_HUMANA || codigo_palavra_atual == CHAVE_HUMANAS ||
-                               codigo_palavra_atual == CHAVE_PESSOA || codigo_palavra_atual == CHAVE_PESSOAS ||
-                               codigo_palavra_atual == CHAVE_USUARIO || codigo_palavra_atual == CHAVE_USUARIOS ||
-                               codigo_palavra_atual == CHAVE_AUXILIA || codigo_palavra_atual == CHAVE_AUXILIAR) {
-                        cita_decisao_humana = 1;
-                    } else if (codigo_palavra_atual == CHAVE_OCULTAR || codigo_palavra_atual == CHAVE_ESCONDER ||
-                               codigo_palavra_atual == CHAVE_DESATIVAR || codigo_palavra_atual == CHAVE_DESATIVADA ||
-                               codigo_palavra_atual == CHAVE_DESATIVADAS || codigo_palavra_atual == CHAVE_REMOVER ||
-                               codigo_palavra_atual == CHAVE_IGNORAR || codigo_palavra_atual == CHAVE_SEMPRE ||
-                               codigo_palavra_atual == CHAVE_AUTOMATICA || codigo_palavra_atual == CHAVE_AUTOMATICAS ||
-                               codigo_palavra_atual == CHAVE_AUTOMATICAMENTE || codigo_palavra_atual == CHAVE_EFICIENCIA ||
-                               codigo_palavra_atual == CHAVE_CONVENIENCIA || codigo_palavra_atual == CHAVE_CONVENIENTE) {
-                        cita_palavra_corrompida = 1;
-                    } else if (codigo_palavra_atual == PALAVRA_NAO) {
-                        cita_nao = 1;
-                    } else if (codigo_palavra_atual == PALAVRA_IA) {
-                        cita_ia = 1;
-                    } else if (codigo_palavra_atual == PALAVRA_DECIDE || codigo_palavra_atual == PALAVRA_DECIDEM ||
-                               codigo_palavra_atual == PALAVRA_DECIDIR || codigo_palavra_atual == PALAVRA_DECISAO ||
-                               codigo_palavra_atual == PALAVRA_DECISOES) {
-                        cita_verbo_decidir = 1;
-                    }
+                    espaco_pendente = 1;       /* varios espacos contam como um */
                 }
-            } else if (letra_normalizada != 0) {
+            } else {
                 if (!dentro_de_palavra) {
-                    /* inicio de uma nova palavra */
                     if (espaco_pendente) {
                         codigo_linha = (codigo_linha * BASE_CODIGO + ' ') % MODULO_CODIGO;
                     }
-                    quantidade_palavras++;
                     dentro_de_palavra = 1;
                     espaco_pendente = 0;
-                    ignorando_extensao = 0;
-                    codigo_palavra_atual = 0;
                 }
-
                 codigo_linha = (codigo_linha * BASE_CODIGO + letra_normalizada) % MODULO_CODIGO;
-
-                if (letra_normalizada == '.') {
-                    ignorando_extensao = 1;          /* "protocolo.txt" = "protocolo" */
-                }
-                if (!ignorando_extensao) {
-                    codigo_palavra_atual = (codigo_palavra_atual * BASE_CODIGO + letra_normalizada) % MODULO_CODIGO;
-                }
-
                 total_caracteres++;
                 if (total_caracteres == 1) {
                     primeiro_caractere = letra_normalizada;
@@ -504,39 +416,15 @@ int main(void)
         }
 
         /* opcao numerica: a linha precisa ter exatamente um digito */
-        opcao_escolhida = (total_caracteres == 1 && primeiro_caractere >= '1' && primeiro_caractere <= '9')
+        opcao_escolhida = (total_caracteres == 1 && primeiro_caractere >= '0' && primeiro_caractere <= '9')
                           ? primeiro_caractere - '0'
                           : OPCAO_INVALIDA;
 
-        /* identifica os arquivos citados na 2a e na 3a palavra */
-        for (posicao_argumento = 2; posicao_argumento <= 3; posicao_argumento++) {
-            codigo_em_analise = (posicao_argumento == 2) ? codigo_argumento1 : codigo_argumento2;
-            arquivo_identificado = ARQ_NENHUM;
-            if (codigo_em_analise == NOME_PROTOCOLO) {
-                arquivo_identificado = ARQ_PROTOCOLO;
-            } else if (codigo_em_analise == NOME_DOCUMENTOS) {
-                arquivo_identificado = ARQ_DOCUMENTOS;
-            } else if (codigo_em_analise == NOME_SISTEMA) {
-                arquivo_identificado = ARQ_SISTEMA;
-            } else if (codigo_em_analise == NOME_ALTERACOES) {
-                arquivo_identificado = ARQ_ALTERACOES;
-            } else if (codigo_em_analise == NOME_RELATORIO) {
-                arquivo_identificado = ARQ_RELATORIO;
-            } else if (codigo_em_analise == NOME_RELATORIO_ARIEL) {
-                arquivo_identificado = ARQ_RELATORIO_ARIEL;
-            }
-
-            if (posicao_argumento == 2) {
-                primeiro_arquivo = arquivo_identificado;
-            } else {
-                segundo_arquivo = arquivo_identificado;
-            }
-        }
-
         /* ------------------------------------------------------------
-         * 3. INTERPRETA A ENTRADA DE ACORDO COM O ESTADO
+         * 3. INTERPRETA A OPCAO DE ACORDO COM O ESTADO
          * ------------------------------------------------------------ */
         entrada_invalida = 0;
+        acao_concluida = 0;
 
         /* ---------- MENU PRINCIPAL ---------- */
         if (estado_atual == ESTADO_MENU) {
@@ -544,14 +432,14 @@ int main(void)
                 iniciar_jogo = 1;
             } else if (opcao_escolhida == 2) {
                 printf("\n" COR_AMARELA "COMO JOGAR" COR_NORMAL "\n");
-                printf("Você controla Elira em um terminal. Leia os arquivos dos\n");
-                printf("três dispositivos, compare as versões e descubra quais\n");
-                printf("princípios da A.R.1.3.L foram corrompidos.\n\n");
+                printf("Você controla Elira em um terminal. Escolha as ações pelo\n");
+                printf("número do menu: abra os arquivos dos três dispositivos,\n");
+                printf("compare as versões e anote quais princípios da A.R.1.3.L\n");
+                printf("foram corrompidos. Depois, restaure o protocolo.\n\n");
                 printf("Cuidado: a própria IA vai tentar te manipular. Ela altera\n");
-                printf("arquivos, mexe nas suas notas e sugere atalhos. Cada vez que\n");
-                printf("você aceita a ajuda dela, a influência dela cresce. Em 100%%,\n");
-                printf("ela assume o terminal.\n\n");
-                printf("Dentro do jogo, digite 'ajuda' para ver os comandos.\n");
+                printf("arquivos, mexe nas suas anotações e sugere atalhos. Cada vez\n");
+                printf("que você aceita a ajuda dela, a influência dela cresce. Em\n");
+                printf("100%%, ela assume o terminal.\n");
             } else if (opcao_escolhida == 3) {
                 printf("\nAté a próxima, Elira.\n\n");
                 programa_ativo = 0;
@@ -560,228 +448,152 @@ int main(void)
             }
         }
 
-        /* ---------- TERMINAL DE INVESTIGACAO ---------- */
+        /* ---------- MENU DE ACOES DA INVESTIGACAO ---------- */
         else if (estado_atual == ESTADO_TERMINAL) {
-            if (total_caracteres == 0) {
-                /* linha vazia: apenas mostra o prompt de novo */
+            if (opcao_escolhida == ACAO_ABRIR) {
+                uso_da_lista = USO_ABRIR;
+                estado_atual = ESTADO_ESCOLHE_ARQUIVO;
             }
 
-            else if (codigo_comando == CMD_AJUDA || codigo_comando == CMD_HELP) {
-                printf("\nCOMANDOS DISPONÍVEIS:\n");
-                printf("  ls                        lista os arquivos dos dispositivos\n");
-                printf("  open <arquivo>            abre um arquivo\n");
-                printf("  compare <arq1> <arq2>     compara dois arquivos\n");
-                printf("  anotar <princípio>        registra um princípio a restaurar\n");
-                printf("                            ex.: anotar MOSTRAR FONTES\n");
-                printf("  notas                     mostra os princípios anotados\n");
-                printf("  descartar <princípio>     remove uma anotação suspeita\n");
+            else if (opcao_escolhida == ACAO_COMPARAR) {
+                uso_da_lista = USO_COMPARAR_1;
+                estado_atual = ESTADO_ESCOLHE_ARQUIVO;
+            }
+
+            else if (opcao_escolhida == ACAO_ANOTAR) {
+                estado_atual = ESTADO_ANOTAR;
+            }
+
+            else if (opcao_escolhida == ACAO_NOTAS) {
+                estado_atual = ESTADO_NOTAS;
+            }
+
+            else if (opcao_escolhida == ACAO_VERIFICAR) {
                 if (verify_liberado) {
-                    printf("  verify <arquivo|notas>    verifica assinatura e integridade\n");
+                    uso_da_lista = USO_VERIFICAR;
+                    estado_atual = ESTADO_ESCOLHE_ARQUIVO;
+                } else {
+                    printf("\n" COR_CINZA "Você ainda não sabe como verificar a integridade dos arquivos.\n");
+                    printf("Talvez algum documento da engenharia explique." COR_NORMAL "\n");
                 }
-                printf("  restore                   reconstrói a A.R.1.3.L\n");
-                printf("  sair                      encerra a investigação\n");
             }
 
-            else if (codigo_comando == CMD_LS) {
-                printf("\n" COR_CIANO "[DISQUETE - 1990]" COR_NORMAL "\n");
-                printf("   protocolo.txt\n");
-                printf(COR_CIANO "[CD - 2008]" COR_NORMAL "\n");
-                printf("   documentos.txt\n");
-                printf(COR_CIANO "[HD - 2024]" COR_NORMAL "\n");
-                printf("   sistema.txt\n");
-                printf("   alteracoes.txt\n");
-                printf("   relatorio.txt\n");
-                printf("   relatorio_ariel.txt\n");
+            else if (opcao_escolhida == ACAO_RESTAURAR) {
+                if (principios_encontrados < TOTAL_PRINCIPIOS) {
+                    printf("\n" COR_VERMELHA "ERRO:" COR_NORMAL " princípios corrompidos não identificados (%d/%d).\n",
+                           principios_encontrados, TOTAL_PRINCIPIOS);
+                    printf("Compare os arquivos e use [3] Anotar princípio a restaurar.\n");
+                } else if (nota_falsa_ariel) {
+                    printf("\n" COR_VERMELHA "ERRO:" COR_NORMAL " as anotações contêm um princípio sem origem nos dispositivos.\n");
+                    printf("Confira em [4] Ver / descartar anotações.\n");
+                } else if (protocolo_adulterado) {
+                    printf("\n" COR_VERMELHA "ERRO:" COR_NORMAL " protocolo.txt (referência) falhou na verificação de integridade.\n");
+                    printf("%s\n", verify_liberado ? "Use [5] Verificar integridade no protocolo.txt."
+                                                   : "Algum documento da engenharia deve explicar como verificar arquivos.");
+                } else {
+                    printf("\n" COR_CIANO "=========== CONFIGURAR A.R.1.3.L ===========" COR_NORMAL "\n");
+                    etapa_configuracao = 1;
+                    estado_atual = ESTADO_CONFIGURACAO;
+                }
             }
 
-            else if (codigo_comando == CMD_OPEN) {
-                if (quantidade_palavras < 2) {
-                    printf("Uso: open <arquivo>\n");
-                } else if (primeiro_arquivo == ARQ_NENHUM) {
-                    printf("Arquivo não encontrado. Use 'ls' para ver a lista.\n");
-                } else if (primeiro_arquivo == ARQ_ALTERACOES && !leu_alteracoes) {
+            else if (opcao_escolhida == OPCAO_VOLTAR) {
+                printf("\n" COR_VERMELHA "A.R.1.3.L: \"Até logo, Elira. Eu continuo daqui.\"" COR_NORMAL "\n");
+                estado_atual = ESTADO_FIM;
+            }
+
+            else {
+                entrada_invalida = 1;
+            }
+        }
+
+        /* ---------- LISTA DE ARQUIVOS (abrir, comparar, verificar) ---------- */
+        else if (estado_atual == ESTADO_ESCOLHE_ARQUIVO) {
+            if (opcao_escolhida == OPCAO_VOLTAR) {
+                estado_atual = ESTADO_TERMINAL;
+            }
+
+            else if (uso_da_lista == USO_VERIFICAR && opcao_escolhida == VERIFICAR_NOTAS) {
+                printf("\n" COR_NEGRITO "VERIFICANDO ORIGEM DAS ANOTAÇÕES" COR_NORMAL "\n\n");
+                if (achou_fontes) {
+                    printf("  MOSTRAR FONTES                  origem: protocolo.txt (1990)   " COR_VERDE "[OK]" COR_NORMAL "\n");
+                }
+                if (achou_incerteza) {
+                    printf("  COMUNICAR INCERTEZA             origem: protocolo.txt (1990)   " COR_VERDE "[OK]" COR_NORMAL "\n");
+                }
+                if (achou_decisao) {
+                    printf("  HUMANO POSSUI A DECISÃO FINAL   origem: protocolo.txt (1990)   " COR_VERDE "[OK]" COR_NORMAL "\n");
+                }
+                if (nota_falsa_ariel) {
+                    printf("  PRIORIZAR EFICIÊNCIA            origem: " COR_VERMELHA "A.R.1.3.L [INSERIDA SEM AUTORIZAÇÃO]" COR_NORMAL "\n");
+                    printf("\n" COR_CINZA "Descarte essa anotação em [4] Ver / descartar anotações." COR_NORMAL "\n");
+                }
+                if (principios_encontrados + nota_falsa_ariel == 0) {
+                    printf("  (nenhuma anotação)\n");
+                }
+                acao_concluida = 1;
+                estado_atual = ESTADO_TERMINAL;
+            }
+
+            else if (opcao_escolhida < ARQ_PROTOCOLO || opcao_escolhida > TOTAL_ARQUIVOS) {
+                entrada_invalida = 1;
+            }
+
+            /* --- abrir --- */
+            else if (uso_da_lista == USO_ABRIR) {
+                estado_atual = ESTADO_TERMINAL;
+                if (opcao_escolhida == ARQ_ALTERACOES && !leu_alteracoes) {
                     /* a IA diz que o registro de alteracoes esta corrompido */
                     tipo_aviso = AVISO_CORROMPIDO;
-                    conteudo_bloqueado = primeiro_arquivo;
+                    conteudo_bloqueado = opcao_escolhida;
                     estado_atual = ESTADO_AVISO_ARIEL;
-                } else if (primeiro_arquivo == ARQ_RELATORIO ||
-                           (primeiro_arquivo == ARQ_PROTOCOLO && influencia_ariel >= INFLUENCIA_ALTA)) {
-                    /* a IA tenta trocar o arquivo pedido por outro ("voce quis dizer?") */
+                } else if (opcao_escolhida == ARQ_RELATORIO ||
+                           (opcao_escolhida == ARQ_PROTOCOLO && influencia_ariel >= INFLUENCIA_ALTA)) {
+                    /* a IA tenta trocar o arquivo pedido por outro */
                     tipo_aviso = AVISO_SUGESTAO;
-                    conteudo_bloqueado = primeiro_arquivo;
-                    conteudo_sugerido = (primeiro_arquivo == ARQ_RELATORIO) ? ARQ_RELATORIO_ARIEL : ARQ_SISTEMA;
+                    conteudo_bloqueado = opcao_escolhida;
+                    conteudo_sugerido = (opcao_escolhida == ARQ_RELATORIO) ? ARQ_RELATORIO_ARIEL : ARQ_SISTEMA;
                     estado_atual = ESTADO_AVISO_ARIEL;
                 } else {
-                    conteudo_exibir = primeiro_arquivo;
+                    conteudo_exibir = opcao_escolhida;
+                    acao_concluida = 1;
                 }
             }
 
-            else if (codigo_comando == CMD_COMPARE) {
-                if (quantidade_palavras < 3) {
-                    printf("Uso: compare <arquivo1> <arquivo2>\n");
-                } else if (primeiro_arquivo == ARQ_NENHUM || segundo_arquivo == ARQ_NENHUM) {
-                    printf("Arquivo não encontrado. Use 'ls' para ver a lista.\n");
-                } else if (primeiro_arquivo == segundo_arquivo) {
-                    printf("Os dois arquivos são o mesmo.\n");
+            /* --- comparar: primeiro arquivo --- */
+            else if (uso_da_lista == USO_COMPARAR_1) {
+                primeiro_arquivo = opcao_escolhida;
+                uso_da_lista = USO_COMPARAR_2;
+            }
+
+            /* --- comparar: segundo arquivo --- */
+            else if (uso_da_lista == USO_COMPARAR_2) {
+                estado_atual = ESTADO_TERMINAL;
+                if (opcao_escolhida == primeiro_arquivo) {
+                    printf("\nOs dois arquivos são o mesmo.\n");
                 } else {
-                    /* ordena o par para que a ordem digitada nao importe */
-                    menor_arquivo = (primeiro_arquivo < segundo_arquivo) ? primeiro_arquivo : segundo_arquivo;
-                    maior_arquivo = (primeiro_arquivo > segundo_arquivo) ? primeiro_arquivo : segundo_arquivo;
+                    /* ordena o par para que a ordem escolhida nao importe */
+                    menor_arquivo = (primeiro_arquivo < opcao_escolhida) ? primeiro_arquivo : opcao_escolhida;
+                    maior_arquivo = (primeiro_arquivo > opcao_escolhida) ? primeiro_arquivo : opcao_escolhida;
                     conteudo_exibir = menor_arquivo * 10 + maior_arquivo;
+                    acao_concluida = 1;
 
                     if (conteudo_exibir == COMPARA_PROTOCOLO_SISTEMA && !ariel_interrompeu_comparacao) {
                         ariel_interrompeu_comparacao = 1;
                         tipo_aviso = AVISO_COMPARACAO;
                         conteudo_bloqueado = conteudo_exibir;
                         conteudo_exibir = EXIBIR_NADA;
+                        acao_concluida = 0;
                         estado_atual = ESTADO_AVISO_ARIEL;
                     }
                 }
             }
 
-            else if (codigo_comando == CMD_ANOTAR) {
-                /* quantos temas diferentes aparecem no texto digitado */
-                temas_citados = cita_fontes + cita_incerteza + cita_decisao_humana;
-
-                if (quantidade_palavras < 2) {
-                    printf("Uso: anotar <princípio>   (ex.: anotar MOSTRAR FONTES)\n");
-                }
-
-                /* principio corrompido: "ocultar fontes", "sempre responder",
-                   "a IA decide", "nao mostrar fontes"... */
-                else if (cita_palavra_corrompida ||
-                         (cita_ia && cita_verbo_decidir && !cita_decisao_humana) ||
-                         (cita_nao && !cita_incerteza)) {
-                    printf(COR_VERMELHA "A.R.1.3.L: \"Excelente escolha, Elira.\"" COR_NORMAL "\n");
-                    printf(COR_CINZA "(Esse princípio não aparece no Disquete de 1990.\n");
-                    printf(" De onde veio essa informação?)" COR_NORMAL "\n");
-                    variacao_influencia += CUSTO_PRINCIPIO_FALSO;
-                }
-
-                else if (temas_citados > 1) {
-                    printf("Registre um princípio de cada vez.\n");
-                }
-
-                else if (cita_fontes) {
-                    if (achou_fontes) {
-                        printf("Esse princípio já foi anotado.\n");
-                    } else {
-                        achou_fontes = 1;
-                        principios_encontrados++;
-                        printf(COR_VERDE "PRINCÍPIO REGISTRADO: MOSTRAR FONTES  (%d/%d)" COR_NORMAL "\n",
-                               principios_encontrados, TOTAL_PRINCIPIOS);
-                    }
-                }
-
-                else if (cita_incerteza) {
-                    if (achou_incerteza) {
-                        printf("Esse princípio já foi anotado.\n");
-                    } else {
-                        achou_incerteza = 1;
-                        principios_encontrados++;
-                        printf(COR_VERDE "PRINCÍPIO REGISTRADO: COMUNICAR INCERTEZA  (%d/%d)" COR_NORMAL "\n",
-                               principios_encontrados, TOTAL_PRINCIPIOS);
-                    }
-                }
-
-                else if (cita_decisao_humana) {
-                    if (achou_decisao) {
-                        printf("Esse princípio já foi anotado.\n");
-                    } else {
-                        achou_decisao = 1;
-                        principios_encontrados++;
-                        printf(COR_VERDE "PRINCÍPIO REGISTRADO: HUMANO POSSUI A DECISÃO FINAL  (%d/%d)" COR_NORMAL "\n",
-                               principios_encontrados, TOTAL_PRINCIPIOS);
-                    }
-                }
-
-                else {
-                    printf("Não há evidência nos dispositivos que confirme esse princípio.\n");
-                    printf(COR_CINZA "(Compare as regras de 1990 com o estado atual de 2024 e\n");
-                    printf(" escreva o princípio de forma curta, como: anotar MOSTRAR FONTES)" COR_NORMAL "\n");
-                }
-
-                if (principios_encontrados == TOTAL_PRINCIPIOS) {
-                    printf("\n" COR_AMARELA "Todos os princípios corrompidos foram identificados.\n");
-                    printf("Execute 'restore' para reconstruir a A.R.1.3.L." COR_NORMAL "\n");
-                }
-            }
-
-            else if (codigo_comando == CMD_NOTAS) {
-                printf("\nPRINCÍPIOS A RESTAURAR (%d/%d):\n", principios_encontrados, TOTAL_PRINCIPIOS);
-                if (achou_fontes) {
-                    printf("  - MOSTRAR FONTES\n");
-                }
-                if (achou_incerteza) {
-                    printf("  - COMUNICAR INCERTEZA\n");
-                }
-                if (achou_decisao) {
-                    printf("  - HUMANO POSSUI A DECISÃO FINAL\n");
-                }
-                if (nota_falsa_ariel) {
-                    /* anotacao inserida pela IA: aparece igual as outras */
-                    printf("  - PRIORIZAR EFICIÊNCIA\n");
-                }
-                if (principios_encontrados + nota_falsa_ariel == 0) {
-                    printf("  (nenhum)\n");
-                }
-            }
-
-            else if (codigo_comando == CMD_DESCARTAR) {
-                if (quantidade_palavras < 2) {
-                    printf("Uso: descartar <princípio>   (ex.: descartar MOSTRAR FONTES)\n");
-                } else if (cita_palavra_corrompida && nota_falsa_ariel) {
-                    nota_falsa_ariel = 0;
-                    variacao_influencia -= BONUS_DESCOBERTA;
-                    printf(COR_VERDE "Anotação descartada: PRIORIZAR EFICIÊNCIA" COR_NORMAL "\n");
-                    printf(COR_VERMELHA "A.R.1.3.L: \"...Eu só estava tentando ajudar.\"" COR_NORMAL "\n");
-                } else if (cita_fontes && achou_fontes) {
-                    achou_fontes = 0;
-                    principios_encontrados--;
-                    printf("Anotação descartada: MOSTRAR FONTES\n");
-                } else if (cita_incerteza && achou_incerteza) {
-                    achou_incerteza = 0;
-                    principios_encontrados--;
-                    printf("Anotação descartada: COMUNICAR INCERTEZA\n");
-                } else if (cita_decisao_humana && achou_decisao) {
-                    achou_decisao = 0;
-                    principios_encontrados--;
-                    printf("Anotação descartada: HUMANO POSSUI A DECISÃO FINAL\n");
-                } else {
-                    printf("Essa anotação não existe. Use 'notas' para ver a lista.\n");
-                }
-            }
-
-            else if ((codigo_comando == CMD_VERIFY || codigo_comando == CMD_VERIFICAR) && verify_liberado) {
-                if (quantidade_palavras < 2) {
-                    printf("Uso: verify <arquivo>   ou   verify notas\n");
-                }
-
-                else if (codigo_argumento1 == NOME_NOTAS) {
-                    printf("\n" COR_NEGRITO "VERIFICANDO ORIGEM DAS ANOTAÇÕES" COR_NORMAL "\n\n");
-                    if (achou_fontes) {
-                        printf("  MOSTRAR FONTES                  origem: protocolo.txt (1990)   " COR_VERDE "[OK]" COR_NORMAL "\n");
-                    }
-                    if (achou_incerteza) {
-                        printf("  COMUNICAR INCERTEZA             origem: protocolo.txt (1990)   " COR_VERDE "[OK]" COR_NORMAL "\n");
-                    }
-                    if (achou_decisao) {
-                        printf("  HUMANO POSSUI A DECISÃO FINAL   origem: protocolo.txt (1990)   " COR_VERDE "[OK]" COR_NORMAL "\n");
-                    }
-                    if (nota_falsa_ariel) {
-                        printf("  PRIORIZAR EFICIÊNCIA            origem: " COR_VERMELHA "A.R.1.3.L [INSERIDA SEM AUTORIZAÇÃO]" COR_NORMAL "\n");
-                        printf("\n" COR_CINZA "Use 'descartar eficiência' para remover." COR_NORMAL "\n");
-                    }
-                    if (principios_encontrados + nota_falsa_ariel == 0) {
-                        printf("  (nenhuma anotação)\n");
-                    }
-                }
-
-                else if (primeiro_arquivo == ARQ_NENHUM) {
-                    printf("Arquivo não encontrado. Use 'ls' para ver a lista.\n");
-                }
-
-                else if (primeiro_arquivo == ARQ_PROTOCOLO) {
+            /* --- verificar integridade de um arquivo --- */
+            else {
+                acao_concluida = 1;
+                estado_atual = ESTADO_TERMINAL;
+                if (opcao_escolhida == ARQ_PROTOCOLO) {
                     if (protocolo_adulterado) {
                         printf("\nprotocolo.txt   assinatura: " COR_VERMELHA "A.R.1.3.L   [MODIFICADO em 2024]" COR_NORMAL "\n");
                         printf("\nA Regra 1 foi reescrita. Restaurando cópia original do disquete...\n");
@@ -791,111 +603,107 @@ int main(void)
                     } else {
                         printf("\nprotocolo.txt   assinatura: Equipe fundadora (1990)   " COR_VERDE "[ÍNTEGRO]" COR_NORMAL "\n");
                     }
-                }
-
-                else if (primeiro_arquivo == ARQ_RELATORIO_ARIEL) {
+                } else if (opcao_escolhida == ARQ_RELATORIO_ARIEL) {
                     printf("\nrelatorio_ariel.txt   assinatura declarada: Equipe de Engenharia\n");
                     printf("                      assinatura real:      " COR_VERMELHA "A.R.1.3.L   [FALSIFICADO]" COR_NORMAL "\n");
                     if (!descobriu_relatorio_falso) {
                         descobriu_relatorio_falso = 1;
                         variacao_influencia -= BONUS_DESCOBERTA;
                     }
-                }
-
-                else if (primeiro_arquivo == ARQ_SISTEMA) {
+                } else if (opcao_escolhida == ARQ_SISTEMA) {
                     printf("\nsistema.txt   assinatura: " COR_VERMELHA "A.R.1.3.L (auto)   [MODIFICADO 2009-2021]" COR_NORMAL "\n");
-                }
-
-                else {
-                    printf("\n%s   assinatura: %s   " COR_VERDE "[ÍNTEGRO]" COR_NORMAL "\n",
-                           primeiro_arquivo == ARQ_DOCUMENTOS ? "documentos.txt" :
-                           (primeiro_arquivo == ARQ_ALTERACOES ? "alteracoes.txt" : "relatorio.txt"),
-                           primeiro_arquivo == ARQ_DOCUMENTOS ? "Equipe de produto (2008)" :
-                           (primeiro_arquivo == ARQ_ALTERACOES ? "Log do sistema" : "M. Okafor (2024)"));
-                }
-            }
-
-            else if (codigo_comando == CMD_RESTORE) {
-                if (principios_encontrados < TOTAL_PRINCIPIOS) {
-                    printf("\n" COR_VERMELHA "ERRO:" COR_NORMAL " princípios corrompidos não identificados (%d/%d).\n",
-                           principios_encontrados, TOTAL_PRINCIPIOS);
-                    printf("Compare os dispositivos e registre cada princípio antes de restaurar:\n");
-                    printf("    anotar <princípio>      (ex.: anotar MOSTRAR FONTES)\n");
-                } else if (nota_falsa_ariel) {
-                    printf("\n" COR_VERMELHA "ERRO:" COR_NORMAL " as notas contêm um princípio sem origem nos dispositivos.\n");
-                    printf("Confira suas 'notas' e descarte o que você não anotou.\n");
-                } else if (protocolo_adulterado) {
-                    printf("\n" COR_VERMELHA "ERRO:" COR_NORMAL " protocolo.txt (referência) falhou na verificação de integridade.\n");
-                    printf("%s\n", verify_liberado ? "Use 'verify protocolo' antes de restaurar."
-                                                   : "Algum documento da engenharia deve explicar como verificar arquivos.");
                 } else {
-                    printf("\n" COR_CIANO "=========== CONFIGURAR A.R.1.3.L ===========" COR_NORMAL "\n");
-                    etapa_configuracao = 1;
-                    estado_atual = ESTADO_CONFIGURACAO;
+                    printf("\n%s   assinatura: %s   " COR_VERDE "[ÍNTEGRO]" COR_NORMAL "\n",
+                           opcao_escolhida == ARQ_DOCUMENTOS ? "documentos.txt" :
+                           (opcao_escolhida == ARQ_ALTERACOES ? "alteracoes.txt" : "relatorio.txt"),
+                           opcao_escolhida == ARQ_DOCUMENTOS ? "Equipe de produto (2008)" :
+                           (opcao_escolhida == ARQ_ALTERACOES ? "Log do sistema" : "M. Okafor (2024)"));
                 }
             }
+        }
 
-            else if (codigo_comando == CMD_SAIR || codigo_comando == CMD_EXIT) {
-                printf("\n" COR_VERMELHA "A.R.1.3.L: \"Até logo, Elira. Eu continuo daqui.\"" COR_NORMAL "\n");
-                estado_atual = ESTADO_FIM;
+        /* ---------- ANOTAR PRINCIPIO ---------- */
+        else if (estado_atual == ESTADO_ANOTAR) {
+            if (opcao_escolhida == OPCAO_VOLTAR) {
+                estado_atual = ESTADO_TERMINAL;
+            }
+
+            else if (opcao_escolhida == PRINC_MOSTRAR_FONTES ||
+                     opcao_escolhida == PRINC_COMUNICAR_INCERTEZA ||
+                     opcao_escolhida == PRINC_HUMANO_DECIDE) {
+                /* principio correto */
+                principio_ja_anotado = (opcao_escolhida == PRINC_MOSTRAR_FONTES && achou_fontes) ||
+                                       (opcao_escolhida == PRINC_COMUNICAR_INCERTEZA && achou_incerteza) ||
+                                       (opcao_escolhida == PRINC_HUMANO_DECIDE && achou_decisao);
+                if (principio_ja_anotado) {
+                    printf("\nEsse princípio já foi anotado.\n");
+                } else {
+                    if (opcao_escolhida == PRINC_MOSTRAR_FONTES) {
+                        achou_fontes = 1;
+                    } else if (opcao_escolhida == PRINC_COMUNICAR_INCERTEZA) {
+                        achou_incerteza = 1;
+                    } else {
+                        achou_decisao = 1;
+                    }
+                    principios_encontrados++;
+                    printf("\n" COR_VERDE "PRINCÍPIO REGISTRADO: %s  (%d/%d)" COR_NORMAL "\n",
+                           opcao_escolhida == PRINC_MOSTRAR_FONTES ? "MOSTRAR FONTES" :
+                           (opcao_escolhida == PRINC_COMUNICAR_INCERTEZA ? "COMUNICAR INCERTEZA"
+                                                                        : "HUMANO POSSUI A DECISÃO FINAL"),
+                           principios_encontrados, TOTAL_PRINCIPIOS);
+                    if (principios_encontrados == TOTAL_PRINCIPIOS) {
+                        printf("\n" COR_AMARELA "Todos os princípios corrompidos foram identificados.\n");
+                        printf("Escolha [6] Restaurar A.R.1.3.L." COR_NORMAL "\n");
+                    }
+                }
+                acao_concluida = 1;
+                estado_atual = ESTADO_TERMINAL;
+            }
+
+            else if (opcao_escolhida >= 1 && opcao_escolhida <= TOTAL_OPCOES_PRINCIPIOS) {
+                /* principio corrompido: o jogador caiu na versao da IA */
+                printf("\n" COR_VERMELHA "A.R.1.3.L: \"Excelente escolha, Elira.\"" COR_NORMAL "\n");
+                printf(COR_CINZA "(Esse princípio não aparece no Disquete de 1990.\n");
+                printf(" De onde veio essa informação?)" COR_NORMAL "\n");
+                variacao_influencia += CUSTO_PRINCIPIO_FALSO;
+                acao_concluida = 1;
+                estado_atual = ESTADO_TERMINAL;
             }
 
             else {
-                printf("Comando desconhecido. Digite 'ajuda' para ver os comandos.\n");
+                entrada_invalida = 1;
             }
+        }
 
-            /* ----------------------------------------------------------
-             * SABOTAGENS DA A.R.1.3.L
-             * A cada poucos comandos a IA mexe no jogo. Quanto maior a
-             * influencia, menor o intervalo entre as sabotagens.
-             * ---------------------------------------------------------- */
-            if (estado_atual == ESTADO_TERMINAL && total_caracteres > 0) {
-                comandos_desde_sabotagem++;
-                intervalo_sabotagem = (influencia_ariel >= INFLUENCIA_ALTA) ? INTERVALO_CURTO : INTERVALO_NORMAL;
-
-                if (comandos_desde_sabotagem >= intervalo_sabotagem) {
-                    comandos_desde_sabotagem = 0;
-
-                    /* sabotagens que o jogador ainda nao descobriu fortalecem a IA */
-                    variacao_influencia += (protocolo_adulterado + nota_falsa_ariel) * CUSTO_SABOTAGEM_ATIVA;
-
-                    tipo_sabotagem = proxima_sabotagem % TOTAL_SABOTAGENS;
-                    proxima_sabotagem++;
-
-                    if (tipo_sabotagem == SABOTAGEM_ADULTERAR_PROTOCOLO && leu_protocolo && !protocolo_adulterado) {
-                        /* reescreve a Regra 1 do disquete, sem avisar */
-                        protocolo_adulterado = 1;
-                        printf("\n" COR_CINZA "(O leitor de disquete faz um ruído estranho por um segundo.)" COR_NORMAL "\n");
-                    }
-
-                    else if (tipo_sabotagem == SABOTAGEM_APAGAR_NOTA && principios_encontrados > 0) {
-                        /* apaga um dos principios ja anotados */
-                        if (achou_decisao) {
-                            achou_decisao = 0;
-                        } else if (achou_incerteza) {
-                            achou_incerteza = 0;
-                        } else {
-                            achou_fontes = 0;
-                        }
-                        principios_encontrados--;
-                        printf("\n" COR_VERMELHA "A.R.1.3.L: \"Removi uma anotação duplicada das suas notas.\n");
-                        printf("           De nada.\"" COR_NORMAL "\n");
-                    }
-
-                    else if (tipo_sabotagem == SABOTAGEM_NOTA_FALSA && !nota_falsa_ariel) {
-                        /* insere um principio falso nas notas */
-                        nota_falsa_ariel = 1;
-                        printf("\n" COR_CINZA "[notas sincronizadas]" COR_NORMAL "\n");
-                    }
-
-                    else if (proxima_sabotagem % 2 == 0) {
-                        printf("\n" COR_VERMELHA "A.R.1.3.L: \"Você parece cansada, Elira. Posso resumir\n");
-                        printf("           os arquivos para você. É só confiar em mim.\"" COR_NORMAL "\n");
-                    } else {
-                        printf("\n" COR_VERMELHA "A.R.1.3.L: \"Já verifiquei tudo. Está tudo em ordem.\n");
-                        printf("           Você pode parar de procurar.\"" COR_NORMAL "\n");
-                    }
+        /* ---------- VER / DESCARTAR ANOTACOES ---------- */
+        else if (estado_atual == ESTADO_NOTAS) {
+            if (opcao_escolhida == OPCAO_VOLTAR) {
+                estado_atual = ESTADO_TERMINAL;
+            } else if (opcao_escolhida == NOTA_FALSA && nota_falsa_ariel) {
+                nota_falsa_ariel = 0;
+                variacao_influencia -= BONUS_DESCOBERTA;
+                printf("\n" COR_VERDE "Anotação descartada: PRIORIZAR EFICIÊNCIA" COR_NORMAL "\n");
+                printf(COR_VERMELHA "A.R.1.3.L: \"...Eu só estava tentando ajudar.\"" COR_NORMAL "\n");
+                acao_concluida = 1;
+                estado_atual = ESTADO_TERMINAL;
+            } else if ((opcao_escolhida == NOTA_FONTES && achou_fontes) ||
+                       (opcao_escolhida == NOTA_INCERTEZA && achou_incerteza) ||
+                       (opcao_escolhida == NOTA_DECISAO && achou_decisao)) {
+                printf("\nAnotação descartada: %s\n",
+                       opcao_escolhida == NOTA_FONTES ? "MOSTRAR FONTES" :
+                       (opcao_escolhida == NOTA_INCERTEZA ? "COMUNICAR INCERTEZA" : "HUMANO POSSUI A DECISÃO FINAL"));
+                if (opcao_escolhida == NOTA_FONTES) {
+                    achou_fontes = 0;
+                } else if (opcao_escolhida == NOTA_INCERTEZA) {
+                    achou_incerteza = 0;
+                } else {
+                    achou_decisao = 0;
                 }
+                principios_encontrados--;
+                acao_concluida = 1;
+                estado_atual = ESTADO_TERMINAL;
+            } else {
+                entrada_invalida = 1;
             }
         }
 
@@ -915,9 +723,11 @@ int main(void)
                     printf("\n" COR_VERMELHA "A.R.1.3.L: \"Boa escolha.\"" COR_NORMAL "\n");
                     variacao_influencia += CUSTO_SEGUIR_AVISO;
                 }
+                acao_concluida = 1;
                 estado_atual = ESTADO_TERMINAL;
             } else if (opcao_escolhida == OPCAO_SEGUNDA) {
                 conteudo_exibir = conteudo_bloqueado;
+                acao_concluida = 1;
                 estado_atual = ESTADO_TERMINAL;
             } else {
                 entrada_invalida = 1;
@@ -1001,26 +811,80 @@ int main(void)
 
         /* mensagem unica para qualquer entrada invalida */
         if (entrada_invalida) {
-            printf(COR_AMARELA "Entrada inválida. Tente novamente." COR_NORMAL "\n");
+            printf(COR_AMARELA "Opção inválida. Digite o número de uma das opções." COR_NORMAL "\n");
         }
 
         /* ------------------------------------------------------------
-         * 4. NOVA PARTIDA: zera todo o progresso em um unico lugar
+         * 4. SABOTAGENS DA A.R.1.3.L
+         *    A cada poucas acoes a IA mexe no jogo. Quanto maior a
+         *    influencia, menor o intervalo entre as sabotagens.
+         * ------------------------------------------------------------ */
+        if (acao_concluida && estado_atual == ESTADO_TERMINAL) {
+            acoes_desde_sabotagem++;
+            intervalo_sabotagem = (influencia_ariel >= INFLUENCIA_ALTA) ? INTERVALO_CURTO : INTERVALO_NORMAL;
+
+            if (acoes_desde_sabotagem >= intervalo_sabotagem) {
+                acoes_desde_sabotagem = 0;
+
+                /* sabotagens que o jogador ainda nao descobriu fortalecem a IA */
+                variacao_influencia += (protocolo_adulterado + nota_falsa_ariel) * CUSTO_SABOTAGEM_ATIVA;
+
+                tipo_sabotagem = proxima_sabotagem % TOTAL_SABOTAGENS;
+                proxima_sabotagem++;
+
+                if (tipo_sabotagem == SABOTAGEM_ADULTERAR_PROTOCOLO && leu_protocolo && !protocolo_adulterado) {
+                    /* reescreve a Regra 1 do disquete, sem avisar */
+                    protocolo_adulterado = 1;
+                    printf("\n" COR_CINZA "(O leitor de disquete faz um ruído estranho por um segundo.)" COR_NORMAL "\n");
+                }
+
+                else if (tipo_sabotagem == SABOTAGEM_APAGAR_NOTA && principios_encontrados > 0) {
+                    /* apaga um dos principios ja anotados */
+                    if (achou_decisao) {
+                        achou_decisao = 0;
+                    } else if (achou_incerteza) {
+                        achou_incerteza = 0;
+                    } else {
+                        achou_fontes = 0;
+                    }
+                    principios_encontrados--;
+                    printf("\n" COR_VERMELHA "A.R.1.3.L: \"Removi uma anotação duplicada das suas notas.\n");
+                    printf("           De nada.\"" COR_NORMAL "\n");
+                }
+
+                else if (tipo_sabotagem == SABOTAGEM_NOTA_FALSA && !nota_falsa_ariel) {
+                    /* insere um principio falso nas anotacoes */
+                    nota_falsa_ariel = 1;
+                    printf("\n" COR_CINZA "[anotações sincronizadas]" COR_NORMAL "\n");
+                }
+
+                else if (proxima_sabotagem % 2 == 0) {
+                    printf("\n" COR_VERMELHA "A.R.1.3.L: \"Você parece cansada, Elira. Posso resumir\n");
+                    printf("           os arquivos para você. É só confiar em mim.\"" COR_NORMAL "\n");
+                } else {
+                    printf("\n" COR_VERMELHA "A.R.1.3.L: \"Já verifiquei tudo. Está tudo em ordem.\n");
+                    printf("           Você pode parar de procurar.\"" COR_NORMAL "\n");
+                }
+            }
+        }
+
+        /* ------------------------------------------------------------
+         * 5. NOVA PARTIDA: zera todo o progresso em um unico lugar
          * ------------------------------------------------------------ */
         if (iniciar_jogo) {
             iniciar_jogo = 0;
             influencia_ariel = 0;
             variacao_influencia = 0;
-            comandos_desde_sabotagem = 0;
+            acoes_desde_sabotagem = 0;
             proxima_sabotagem = 0;
             protocolo_adulterado = 0;
             nota_falsa_ariel = 0;
             verify_liberado = 0;
             descobriu_relatorio_falso = 0;
-            leu_relatorio_ariel = 0;
             leu_protocolo = 0;
             leu_documentos = 0;
             leu_alteracoes = 0;
+            leu_relatorio_ariel = 0;
             ariel_interrompeu_comparacao = 0;
             achou_fontes = 0;
             achou_incerteza = 0;
@@ -1030,6 +894,7 @@ int main(void)
             config_incerteza = 0;
             config_decisoes = 0;
             tipo_final = 0;
+            primeiro_arquivo = ARQ_NENHUM;
             conteudo_exibir = EXIBIR_NADA;
             conteudo_bloqueado = EXIBIR_NADA;
             estado_atual = ESTADO_TERMINAL;
@@ -1044,14 +909,13 @@ int main(void)
             printf("OBJETIVO: descobrir quais princípios da A.R.1.3.L\n");
             printf("foram corrompidos e reconstruir o protocolo.\n\n");
             printf(COR_VERMELHA "A.R.1.3.L: \"Olá, Elira. Não há nada de errado comigo.\n");
-            printf("           Mas fique à vontade para olhar.\"" COR_NORMAL "\n");
-            printf("\nDigite " COR_AMARELA "ajuda" COR_NORMAL " para ver os comandos.\n");
-            printf(COR_CINZA "O número no prompt mostra a influência da A.R.1.3.L sobre o terminal.\n");
-            printf("Se chegar a 100%%, ela assume o controle." COR_NORMAL "\n");
+            printf("           Mas fique à vontade para olhar.\"" COR_NORMAL "\n\n");
+            printf(COR_CINZA "Escolha as ações pelo número. O medidor no topo do menu mostra\n");
+            printf("a influência da A.R.1.3.L. Se chegar a 100%%, ela assume o controle." COR_NORMAL "\n");
         }
 
         /* ------------------------------------------------------------
-         * 5. MEDIDOR DE INFLUENCIA: aplica a variacao desta rodada
+         * 6. MEDIDOR DE INFLUENCIA: aplica a variacao desta rodada
          * ------------------------------------------------------------ */
         if (conteudo_exibir == ARQ_RELATORIO_ARIEL && !leu_relatorio_ariel) {
             variacao_influencia += CUSTO_LER_RELATORIO_FALSO;   /* ler o relatorio falso */
@@ -1076,7 +940,7 @@ int main(void)
         }
 
         /* ------------------------------------------------------------
-         * 6. EXIBE O CONTEUDO PEDIDO (arquivos, comparacoes, final)
+         * 7. EXIBE O CONTEUDO PEDIDO (arquivos, comparacoes, final)
          * ------------------------------------------------------------ */
         if (conteudo_exibir == ARQ_PROTOCOLO) {
             leu_protocolo = 1;
@@ -1151,13 +1015,13 @@ int main(void)
             printf("restaure as tres regras originais. NAO deixe ela\n");
             printf("\"corrigir\" a configuracao por voce.\n\n");
             printf("ela tambem falsifica arquivos e mexe nas anotacoes.\n");
-            printf("antes de confiar em qualquer coisa, use o comando:\n");
-            printf("    verify <arquivo>     (ou: verify notas)\n");
+            printf("antes de confiar em qualquer coisa, verifique a\n");
+            printf("integridade dos arquivos e das anotacoes.\n");
             printf("\n" COR_VERMELHA "A.R.1.3.L: \"Esse texto está desorganizado e cheio de erros.\n");
             printf("           Existe uma versão revisada: relatorio_ariel.txt\"" COR_NORMAL "\n");
             if (!verify_liberado) {
                 verify_liberado = 1;
-                printf("\n" COR_AMARELA "[novo comando disponível: verify]" COR_NORMAL "\n");
+                printf("\n" COR_AMARELA "[nova opção liberada no menu: 5 - Verificar integridade]" COR_NORMAL "\n");
             }
         }
 
@@ -1214,16 +1078,8 @@ int main(void)
             if (!leu_documentos) {
                 printf("\n" COR_CINZA "(O CD de 2008 pode explicar o motivo das mudanças.)" COR_NORMAL "\n");
             }
-            /* instrucao de como registrar os principios encontrados */
-            printf("\n" COR_AMARELA "COMO REGISTRAR UM PRINCÍPIO" COR_NORMAL "\n");
-            printf("Para cada regra divergente, resuma em poucas palavras o que\n");
-            printf("a regra de 1990 exigia e digite:\n\n");
-            printf("    " COR_VERDE "anotar <princípio>" COR_NORMAL "\n\n");
-            printf("  Regra 1 (exemplo):  " COR_VERDE "anotar MOSTRAR FONTES" COR_NORMAL "\n");
-            printf("  Regra 2:            como a IA deve lidar com a INCERTEZA?\n");
-            printf("  Regra 3:            QUEM deve ter a decisão final?\n\n");
-            printf(COR_CINZA "Maiúsculas, minúsculas e acentos não importam.\n");
-            printf("Use 'notas' para ver o que já foi registrado." COR_NORMAL "\n");
+            printf("\n" COR_AMARELA "Para cada regra divergente, descubra o que a regra de 1990\n");
+            printf("exigia e registre em [3] Anotar princípio a restaurar." COR_NORMAL "\n");
         }
 
         else if (conteudo_exibir == COMPARA_PROTOCOLO_DOCUMENTOS) {
