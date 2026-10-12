@@ -31,6 +31,33 @@ Use um terminal com UTF-8 e cores ANSI (macOS, Linux ou Windows Terminal).
 
 O código usa apenas o conteúdo dos Capítulos 1 a 3 do livro-base (Mizrahi): `printf`/`getchar`, variáveis, constantes, operadores, `if`/`else` e laços. Não usa vetores, strings, `string.h`, structs, ponteiros, arquivos nem funções próprias.
 
+## Backlog (Artefatos outras disciplinas) 
+
+**1- Interface e Apresentação**
+
+![https://pub-181bb6168cd04f80bd48d53b914eecab.r2.dev/backlog-01.jpeg](https://pub-181bb6168cd04f80bd48d53b914eecab.r2.dev/WhatsApp%20Image%202026-09-03%20at%2022.53.31.jpeg)
+
+**2- Ciclo do Jogo e Narrativa**
+
+![Backlog](https://pub-181bb6168cd04f80bd48d53b914eecab.r2.dev/WhatsApp%20Image%202026-09-03%20at%2022.54.02.jpeg)
+
+**3- Processo Qualidade e Suporte**
+
+![Backlog](https://pub-181bb6168cd04f80bd48d53b914eecab.r2.dev/WhatsApp%20Image%202026-09-03%20at%2022.54.24.jpeg)
+
+***
+
+### **4 - [Protótipo de Telas](https://drive.google.com/drive/folders/1jbDYsVpSI9EwF0LDQyAzZWooYsANEepP)**
+
+### **5 - [Vídeo de apresentação](https://drive.google.com/drive/folders/19YEVyh865qAgfRMuiUSIKoK3plIKMq8T)**
+
+### **6 - [Jira](https://csprj-adsr-2p-e4.atlassian.net/jira/software/c/projects/PI2/list?jql=project%20%3D%20PI2%20AND%20parent%20%3D%20PI2-9%20AND%20fixVersion%20%3D%20empty%20ORDER%20BY%20resolution%20DESC%2C%20cf%5B10019%5D%20ASC)**
+
+### **7 - [Diagrama das UHs](https://docs.google.com/document/d/1DT3npOZVw_-bCEAFb01KWhnt9JGE5SIf2Vkzfs2q1mk/edit?tab=t.0#heading=h.ld230wkn1wjo)**
+
+***
+
+
 - **Texto sem strings:** a única entrada em texto é `EU DECIDO`. A frase é lida letra a letra e vira um código numérico (`codigo = (codigo * 31 + letra) % 1000003`), comparado com uma constante `#define`.
 - **Máquina de estados:** o jogo inteiro roda em um único `while`, com um só ponto de leitura do teclado e um só bloco de exibição (princípio DRY).
 - **Compilação:** compila sem avisos com `gcc -Wall -Wextra -pedantic -std=c99`.
