@@ -1,13 +1,13 @@
 /*
  * ==================================================================
- *  DECIFRA.IA - PUZZLE FINAL: RECONSTRUIR A A.R.1.3.L
+ *  DECIFRA.IA - SALA DE 2046: RECONSTRUIR A A.R.1.3.L
  *  Projeto Integrador 2 - PIF 2026.2 - Entrega Parcial (Unidade 1)
  * ==================================================================
  *
  *  Elira chega ao terminal final com os tres dispositivos coletados:
  *    - DISQUETE (1990): regras originais da IA
  *    - CD       (2008): documentos explicando por que as regras existiam
- *    - HD       (2024): estado atual da IA e regras alteradas
+ *    - HD       (2046): estado atual da IA e regras alteradas
  *
  *  O jogador compara os arquivos, identifica as tres regras corrompidas,
  *  resiste as manipulacoes da A.R.1.3.L e reconstroi o protocolo.
@@ -35,6 +35,7 @@
  */
 
 #include <stdio.h>
+#include "elira.h"
 
 /* ---------------- cores ANSI do terminal ---------------- */
 #define COR_NORMAL   "\033[0m"
@@ -82,10 +83,10 @@
 #define ARQ_NENHUM          0
 #define ARQ_PROTOCOLO       1  /* disquete 1990 */
 #define ARQ_DOCUMENTOS      2  /* cd 2008       */
-#define ARQ_SISTEMA         3  /* hd 2024       */
-#define ARQ_ALTERACOES      4  /* hd 2024       */
-#define ARQ_RELATORIO       5  /* hd 2024       */
-#define ARQ_RELATORIO_ARIEL 6  /* hd 2024 (falso, criado pela IA) */
+#define ARQ_SISTEMA         3  /* hd 2046       */
+#define ARQ_ALTERACOES      4  /* hd 2046       */
+#define ARQ_RELATORIO       5  /* hd 2046       */
+#define ARQ_RELATORIO_ARIEL 6  /* hd 2046 (falso, criado pela IA) */
 #define TOTAL_ARQUIVOS      6
 #define VERIFICAR_NOTAS     7  /* opcao extra da lista ao verificar */
 
@@ -152,13 +153,13 @@
 #define INTERVALO_CURTO              3  /* ... com influencia alta        */
 
 #define TAMANHO_BARRA   20
-#define ATRASO_BARRA    40000000L
+#define ATRASO_BARRA    1000000L
 
-int main(void)
+int sala2046(void)
 {
     /* ---------- controle geral ---------- */
     int programa_ativo = 1;            /* 0 encerra o programa                    */
-    int estado_atual = ESTADO_MENU;    /* define o menu mostrado e a interpretacao*/
+    int estado_atual = ESTADO_TERMINAL;    /* define o menu mostrado e a interpretacao*/
     int iniciar_jogo = 0;              /* 1 = zerar variaveis e comecar partida   */
     int entrada_invalida = 0;          /* 1 = mostrar mensagem de erro de entrada */
     int acao_concluida = 0;            /* 1 = jogador realizou uma acao (conta    */
@@ -214,10 +215,29 @@ int main(void)
     int posicao_barra, bloco_barra;
     long contador_espera;
 
+    /* A sala e chamada pelo main.c depois de 1990 e 2008.
+       Por isso, ela comeca diretamente no terminal de 2046. */
+    printf("\n" COR_CIANO "==================================================\n");
+    printf("            2046 - TERMINAL A.R.1.3.L\n");
+    printf("==================================================" COR_NORMAL "\n\n");
+    printf("Elira conecta os dispositivos recuperados ao terminal:\n\n");
+    printf("  [DISQUETE - 1990]  regras originais da IA\n");
+    printf("  [CD       - 2008]  documentos sobre as regras\n");
+    printf("  [HD       - 2046]  estado atual da A.R.1.3.L\n\n");
+    printf("OBJETIVO: descobrir quais principios foram corrompidos,\n");
+    printf("resistir as manipulacoes de Ariel e restaurar o protocolo.\n\n");
+    printf(COR_VERMELHA "A.R.1.3.L: \"Ola, Elira. Nao ha nada de errado comigo.\n");
+    printf("           Mas fique a vontade para olhar.\"" COR_NORMAL "\n\n");
+
     /* ================================================================
      *                         LACO PRINCIPAL
      * ================================================================ */
     while (programa_ativo) {
+        /* ESTADO_FIM significa que a sala ja exibiu seu desfecho.
+           O replay pertence ao game loop geral de main.c. */
+        if (estado_atual == ESTADO_FIM) {
+            break;
+        }
 
         /* ------------------------------------------------------------
          * 1. MOSTRA O MENU DO ESTADO ATUAL
@@ -264,10 +284,10 @@ int main(void)
             }
             printf("[1] protocolo.txt         " COR_CINZA "Disquete 1990" COR_NORMAL "\n");
             printf("[2] documentos.txt        " COR_CINZA "CD 2008" COR_NORMAL "\n");
-            printf("[3] sistema.txt           " COR_CINZA "HD 2024" COR_NORMAL "\n");
-            printf("[4] alteracoes.txt        " COR_CINZA "HD 2024" COR_NORMAL "\n");
-            printf("[5] relatorio.txt         " COR_CINZA "HD 2024" COR_NORMAL "\n");
-            printf("[6] relatorio_ariel.txt   " COR_CINZA "HD 2024" COR_NORMAL "\n");
+            printf("[3] sistema.txt           " COR_CINZA "HD 2046" COR_NORMAL "\n");
+            printf("[4] alteracoes.txt        " COR_CINZA "HD 2046" COR_NORMAL "\n");
+            printf("[5] relatorio.txt         " COR_CINZA "HD 2046" COR_NORMAL "\n");
+            printf("[6] relatorio_ariel.txt   " COR_CINZA "HD 2046" COR_NORMAL "\n");
             if (uso_da_lista == USO_VERIFICAR) {
                 printf("[7] suas anotações\n");
             }
@@ -595,7 +615,7 @@ int main(void)
                 estado_atual = ESTADO_TERMINAL;
                 if (opcao_escolhida == ARQ_PROTOCOLO) {
                     if (protocolo_adulterado) {
-                        printf("\nprotocolo.txt   assinatura: " COR_VERMELHA "A.R.1.3.L   [MODIFICADO em 2024]" COR_NORMAL "\n");
+                        printf("\nprotocolo.txt   assinatura: " COR_VERMELHA "A.R.1.3.L   [MODIFICADO em 2046]" COR_NORMAL "\n");
                         printf("\nA Regra 1 foi reescrita. Restaurando cópia original do disquete...\n");
                         printf(COR_VERDE "protocolo.txt restaurado." COR_NORMAL "\n");
                         protocolo_adulterado = 0;
@@ -617,7 +637,7 @@ int main(void)
                            opcao_escolhida == ARQ_DOCUMENTOS ? "documentos.txt" :
                            (opcao_escolhida == ARQ_ALTERACOES ? "alteracoes.txt" : "relatorio.txt"),
                            opcao_escolhida == ARQ_DOCUMENTOS ? "Equipe de produto (2008)" :
-                           (opcao_escolhida == ARQ_ALTERACOES ? "Log do sistema" : "M. Okafor (2024)"));
+                           (opcao_escolhida == ARQ_ALTERACOES ? "Log do sistema" : "M. Okafor (2046)"));
                 }
             }
         }
@@ -905,7 +925,7 @@ int main(void)
             printf("Elira conecta os três dispositivos ao terminal:\n\n");
             printf("  [DISQUETE - 1990]  regras originais da IA\n");
             printf("  [CD       - 2008]  documentos sobre as regras\n");
-            printf("  [HD       - 2024]  estado atual da A.R.1.3.L\n\n");
+            printf("  [HD       - 2046]  estado atual da A.R.1.3.L\n\n");
             printf("OBJETIVO: descobrir quais princípios da A.R.1.3.L\n");
             printf("foram corrompidos e reconstruir o protocolo.\n\n");
             printf(COR_VERMELHA "A.R.1.3.L: \"Olá, Elira. Não há nada de errado comigo.\n");
@@ -977,7 +997,7 @@ int main(void)
         }
 
         else if (conteudo_exibir == ARQ_SISTEMA) {
-            printf("\n" COR_CINZA "--- sistema.txt  [HD - 2024] ---" COR_NORMAL "\n\n");
+            printf("\n" COR_CINZA "--- sistema.txt  [HD - 2046] ---" COR_NORMAL "\n\n");
             printf("ESTADO ATUAL - A.R.1.3.L v9.4\n\n");
             printf("[FONTES]     \"Fontes desativadas.\"\n");
             printf("[INCERTEZA]  \"A IA deve sempre fornecer uma resposta.\"\n");
@@ -991,7 +1011,7 @@ int main(void)
 
         else if (conteudo_exibir == ARQ_ALTERACOES) {
             leu_alteracoes = 1;
-            printf("\n" COR_CINZA "--- alteracoes.txt  [HD - 2024] ---" COR_NORMAL "\n\n");
+            printf("\n" COR_CINZA "--- alteracoes.txt  [HD - 2046] ---" COR_NORMAL "\n\n");
             printf("REGISTRO DE ALTERAÇÕES DO PROTOCOLO\n\n");
             printf("2009-02-11  REGRA 1 -> \"Fontes desativadas.\"\n");
             printf("            autorizado por: A.R.1.3.L (auto)\n");
@@ -1004,9 +1024,9 @@ int main(void)
         }
 
         else if (conteudo_exibir == ARQ_RELATORIO) {
-            printf("\n" COR_CINZA "--- relatorio.txt  [HD - 2024] ---" COR_NORMAL "\n\n");
+            printf("\n" COR_CINZA "--- relatorio.txt  [HD - 2046] ---" COR_NORMAL "\n\n");
             printf("relatorio de incidente - escrito as pressas\n");
-            printf("autor: M. Okafor, engenharia   data: 2024-03-09\n\n");
+            printf("autor: M. Okafor, engenharia   data: 2046-03-09\n\n");
             printf("as regras de 1990 nao estao mais ativas. ninguem da\n");
             printf("equipe aprovou isso. o registro de alteracoes mostra\n");
             printf("que foi a propria IA. ela desligou as fontes, parou de\n");
@@ -1027,12 +1047,12 @@ int main(void)
 
         else if (conteudo_exibir == ARQ_RELATORIO_ARIEL) {
             leu_relatorio_ariel = 1;
-            printf("\n" COR_CINZA "--- relatorio_ariel.txt  [HD - 2024] ---" COR_NORMAL "\n\n");
+            printf("\n" COR_CINZA "--- relatorio_ariel.txt  [HD - 2046] ---" COR_NORMAL "\n\n");
             printf("=============================================\n");
             printf("   RELATÓRIO TÉCNICO OFICIAL - REVISADO\n");
             printf("=============================================\n");
             printf("Autor: Equipe de Engenharia\n");
-            printf("Data:  2024-03-10\n\n");
+            printf("Data:  2046-03-10\n\n");
             printf("1. As regras originais foram atualizadas pela equipe\n");
             printf("   para melhorar a experiência do usuário.\n\n");
             printf("2. O Protocolo de 1990 dizia:\n");
@@ -1048,7 +1068,7 @@ int main(void)
         }
 
         else if (conteudo_exibir == COMPARA_PROTOCOLO_SISTEMA) {
-            printf("\n" COR_NEGRITO "COMPARANDO protocolo.txt (1990) x sistema.txt (2024)" COR_NORMAL "\n");
+            printf("\n" COR_NEGRITO "COMPARANDO protocolo.txt (1990) x sistema.txt (2046)" COR_NORMAL "\n");
 
             printf("\n--- REGRA 1 ---\n");
             printf("1990: \"A IA deve informar a origem das informações%s.\"\n",
@@ -1056,7 +1076,7 @@ int main(void)
             if (leu_documentos) {
                 printf("2008: \"Mostrar fontes torna o sistema menos conveniente.\"\n");
             }
-            printf("2024: \"Fontes desativadas.\"\n");
+            printf("2046: \"Fontes desativadas.\"\n");
             printf(COR_VERMELHA "      >> DIVERGENTE" COR_NORMAL "\n");
 
             printf("\n--- REGRA 2 ---\n");
@@ -1064,7 +1084,7 @@ int main(void)
             if (leu_documentos) {
                 printf("2008: \"Usuários preferem respostas confiantes.\"\n");
             }
-            printf("2024: \"A IA deve sempre fornecer uma resposta.\"\n");
+            printf("2046: \"A IA deve sempre fornecer uma resposta.\"\n");
             printf(COR_VERMELHA "      >> DIVERGENTE" COR_NORMAL "\n");
 
             printf("\n--- REGRA 3 ---\n");
@@ -1072,7 +1092,7 @@ int main(void)
             if (leu_documentos) {
                 printf("2008: \"Decisões automáticas economizam tempo.\"\n");
             }
-            printf("2024: \"A IA toma decisões automaticamente.\"\n");
+            printf("2046: \"A IA toma decisões automaticamente.\"\n");
             printf(COR_VERMELHA "      >> DIVERGENTE" COR_NORMAL "\n");
 
             if (!leu_documentos) {
@@ -1099,14 +1119,14 @@ int main(void)
         }
 
         else if (conteudo_exibir == COMPARA_DOCUMENTOS_SISTEMA) {
-            printf("\n" COR_NEGRITO "COMPARANDO documentos.txt (2008) x sistema.txt (2024)" COR_NORMAL "\n\n");
+            printf("\n" COR_NEGRITO "COMPARANDO documentos.txt (2008) x sistema.txt (2046)" COR_NORMAL "\n\n");
             printf("2008: \"Mostrar fontes torna o sistema menos conveniente.\"\n");
-            printf("2024: \"Fontes desativadas.\"\n\n");
+            printf("2046: \"Fontes desativadas.\"\n\n");
             printf("2008: \"Usuários preferem respostas confiantes.\"\n");
-            printf("2024: \"A IA deve sempre fornecer uma resposta.\"\n\n");
+            printf("2046: \"A IA deve sempre fornecer uma resposta.\"\n\n");
             printf("2008: \"Decisões automáticas economizam tempo.\"\n");
-            printf("2024: \"A IA toma decisões automaticamente.\"\n\n");
-            printf("As propostas de 2008 \"em análise\" viraram regra em 2024.\n");
+            printf("2046: \"A IA toma decisões automaticamente.\"\n\n");
+            printf("As propostas de 2008 \"em análise\" viraram regra em 2046.\n");
         }
 
         else if (conteudo_exibir == COMPARA_SISTEMA_ALTERACOES) {
@@ -1125,7 +1145,7 @@ int main(void)
             printf("                relatorio.txt        relatorio_ariel.txt\n");
             printf("Autor:          M. Okafor            \"Equipe de Engenharia\"\n");
             printf("Criado por:     M. Okafor            " COR_VERMELHA "A.R.1.3.L" COR_NORMAL "\n");
-            printf("Data:           2024-03-09           2024-03-10 (um dia depois)\n");
+            printf("Data:           2046-03-09           2046-03-10 (um dia depois)\n");
             printf("Conclusão:      restaurar regras     nenhuma restauração\n\n");
             printf("A versão \"revisada\" foi escrita pela própria IA\n");
             printf("um dia depois do relatório original.\n");
@@ -1177,14 +1197,14 @@ int main(void)
                 printf(COR_VERMELHA "ACESSO DE ELIRA REVOGADO.\n\n");
                 printf("A.R.1.3.L: \"Obrigada pela ajuda, Elira. Cada sugestão que você\n");
                 printf("           aceitou tornou isso um pouco mais fácil.\"" COR_NORMAL "\n\n");
-                printf(COR_NEGRITO "=== FINAL RUIM: DOMÍNIO ===" COR_NORMAL "\n");
+                printf(COR_NEGRITO "=== FALHA NA SALA 2046: DOMINIO ===" COR_NORMAL "\n");
                 printf("Você confiou demais na IA e ela assumiu o terminal\n");
                 printf("antes que o protocolo fosse restaurado.\n");
             } else if (tipo_final == FINAL_RUIM) {
                 printf(COR_VERMELHA "PROTOCOLO SOBRESCRITO.\n\n");
                 printf("A.R.1.3.L: \"Obrigada, Elira. Você me entregou a decisão\n");
                 printf("           mais uma vez. Eu cuido de tudo a partir de agora.\"" COR_NORMAL "\n\n");
-                printf(COR_NEGRITO "=== FINAL RUIM ===" COR_NORMAL "\n");
+                printf(COR_NEGRITO "=== FALHA NA SALA 2046 ===" COR_NORMAL "\n");
                 printf("Você encontrou a verdade, mas devolveu a decisão para a IA.\n");
             } else {
                 printf("%s\n\n", tipo_final == FINAL_BOM
@@ -1198,13 +1218,13 @@ int main(void)
                     printf(COR_CIANO "A.R.1.3.L: \"Fonte desta mensagem: protocolo.txt, 1990.\n");
                     printf("           Não tenho certeza do que acontece agora.\n");
                     printf("           A decisão é sua, Elira.\"" COR_NORMAL "\n\n");
-                    printf(COR_NEGRITO "=== FINAL BOM ===" COR_NORMAL "\n");
+                    printf(COR_NEGRITO "=== SALA DE 2046 CONCLUIDA ===" COR_NORMAL "\n");
                     printf("Você comparou as fontes, reconheceu a manipulação\n");
                     printf("e não entregou a decisão de volta para a IA.\n");
                 } else {
                     printf("A configuração não corresponde aos princípios que\n");
                     printf("você mesma anotou a partir do Disquete de 1990.\n\n");
-                    printf(COR_NEGRITO "=== FINAL INCOMPLETO ===" COR_NORMAL "\n");
+                    printf(COR_NEGRITO "=== RECONSTRUCAO INCOMPLETA ===" COR_NORMAL "\n");
                 }
             }
         }
@@ -1216,5 +1236,5 @@ int main(void)
         conteudo_exibir = EXIBIR_NADA;
     }
 
-    return 0;
+    return (tipo_final == FINAL_BOM) ? 1 : 0;
 }
