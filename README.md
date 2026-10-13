@@ -33,6 +33,9 @@ Final Ruim / Final Padrão / Final Bom
 As fases são jogadas em sequência. Entradas inválidas são tratadas pelo programa e não encerram a execução. Escolhas incorretas dentro dos desafios podem gerar penalidades e, em determinadas fases, levar ao fim antecipado da jornada.
 
 ---
+## Link para o Screencast
+
+https://drive.google.com/drive/folders/1vge6VPzMLjnU_J8K4dOXtQmQgG59v2YJ
 
 ## Como compilar e executar
 
