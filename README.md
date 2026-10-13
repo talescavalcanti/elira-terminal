@@ -1,6 +1,6 @@
 # ELIRA — Decifra.IA
 
-Jogo em terminal desenvolvido em **Linguagem C** para a Primeira Entrega Parcial da disciplina de **Programação Imperativa e Funcional (PIF) — 2026.2**, dentro do Projeto Integrador 2 — **Decifra.IA**.
+Jogo em terminal desenvolvido em **Linguagem C** para a Primeira Entrega Parcial da disciplina de **Programação Imperativa e Funcional (PIF) 2026.2**, dentro do Projeto Integrador 2, **Decifra.IA**.
 
 ## Integrantes da equipe
 
