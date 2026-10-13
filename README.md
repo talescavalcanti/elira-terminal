@@ -2,6 +2,19 @@
 
 Jogo em terminal desenvolvido em **Linguagem C** para a Primeira Entrega Parcial da disciplina de **Programação Imperativa e Funcional (PIF) — 2026.2**, dentro do Projeto Integrador 2 — **Decifra.IA**.
 
+## Integrantes da equipe
+
+- João Tezolini
+- Victor Julius
+- Otávio Sousa
+- Beatriz de Melo
+- Maria Vitória
+- Carlos Eduardo
+- José Tales
+- Luisa Siqueira
+
+---
+
 A história acompanha **Elira** em uma viagem por diferentes momentos da evolução da Inteligência Artificial. Em cada fase, o jogador precisa analisar informações, tomar decisões e impedir que sistemas automatizados substituam o julgamento humano. A jornada termina em um confronto direto entre Elira e **Ariel (A.R.1.3.L.)**.
 
 > Ideia central do jogo: a IA pode auxiliar pessoas, mas não deve substituir sua autonomia, sua capacidade de questionar e seu direito de decidir.
@@ -33,6 +46,7 @@ Final Ruim / Final Padrão / Final Bom
 As fases são jogadas em sequência. Entradas inválidas são tratadas pelo programa e não encerram a execução. Escolhas incorretas dentro dos desafios podem gerar penalidades e, em determinadas fases, levar ao fim antecipado da jornada.
 
 ---
+
 ## Link para o Screencast
 
 https://drive.google.com/drive/folders/1vge6VPzMLjnU_J8K4dOXtQmQgG59v2YJ
@@ -417,4 +431,3 @@ A.R.1.3.L. assume o terminal
 | **Domínio da A.R.1.3.L.** | Deixar a influência chegar a 100% no puzzle de 2046 |
 
 ---
-
